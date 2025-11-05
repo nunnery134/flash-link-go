@@ -207,10 +207,10 @@ export const ProxyBrowser = () => {
             <div className="text-center space-y-4 max-w-md px-4">
               <Shield className="h-20 w-20 text-primary mx-auto glow-effect" />
               <h1 className="text-4xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
-                Lightning Proxy
+                Navis Proxy
               </h1>
               <p className="text-muted-foreground text-lg">
-                Enter any URL above to browse securely and bypass restrictions
+                Bypass these dictators
               </p>
               <div className="flex flex-wrap gap-2 justify-center pt-4">
                 <Button
