@@ -21,30 +21,22 @@ interface TabState {
 }
 
 export const ProxyBrowser = () => {
-  const [tabs, setTabs] = useState<TabState[]>([]);
-  const [activeTab, setActiveTab] = useState<string>("");
+  const initialTab: TabState = {
+    id: "tab-1",
+    url: "https://navis-proxy-v4.vercel.app/search.html",
+    currentUrl: "",
+    displayUrl: "",
+    isLoading: false,
+    error: null,
+    history: [],
+    historyIndex: -1,
+    proxyContent: "",
+    title: "New Tab"
+  };
+  
+  const [tabs, setTabs] = useState<TabState[]>([initialTab]);
+  const [activeTab, setActiveTab] = useState<string>("tab-1");
   const { toast } = useToast();
-
-  useEffect(() => {
-    // Create first tab with the default URL
-    const firstTab: TabState = {
-      id: "tab-1",
-      url: "https://navis-proxy-v4.vercel.app/search.html",
-      currentUrl: "",
-      displayUrl: "",
-      isLoading: false,
-      error: null,
-      history: [],
-      historyIndex: -1,
-      proxyContent: "",
-      title: "New Tab"
-    };
-    setTabs([firstTab]);
-    setActiveTab(firstTab.id);
-    
-    // Load the default URL
-    loadUrlForTab(firstTab.id, "https://navis-proxy-v4.vercel.app/search.html");
-  }, []);
 
   const currentTab = tabs.find(t => t.id === activeTab);
   const updateTab = (id: string, updates: Partial<TabState>) => {
@@ -61,7 +53,9 @@ export const ProxyBrowser = () => {
 
   const loadUrlForTab = async (tabId: string, targetUrl: string) => {
     const formattedUrl = validateAndFormatUrl(targetUrl);
-    updateTab(tabId, { isLoading: true, error: null });
+    setTabs(prevTabs => prevTabs.map(t => 
+      t.id === tabId ? { ...t, isLoading: true, error: null } : t
+    ));
     
     try {
       new URL(formattedUrl);
@@ -76,23 +70,26 @@ export const ProxyBrowser = () => {
         throw new Error(proxyError.message);
       }
 
-      const tab = tabs.find(t => t.id === tabId);
-      if (!tab) return;
+      setTabs(prevTabs => {
+        const tab = prevTabs.find(t => t.id === tabId);
+        if (!tab) return prevTabs;
 
-      const newHistory = tab.history.slice(0, tab.historyIndex + 1);
-      newHistory.push(formattedUrl);
-      
-      const urlObj = new URL(formattedUrl);
-      const title = urlObj.hostname || "New Tab";
+        const newHistory = tab.history.slice(0, tab.historyIndex + 1);
+        newHistory.push(formattedUrl);
+        
+        const urlObj = new URL(formattedUrl);
+        const title = urlObj.hostname || "New Tab";
 
-      updateTab(tabId, {
-        currentUrl: formattedUrl,
-        displayUrl: formattedUrl,
-        proxyContent: data,
-        history: newHistory,
-        historyIndex: newHistory.length - 1,
-        isLoading: false,
-        title
+        return prevTabs.map(t => t.id === tabId ? {
+          ...t,
+          currentUrl: formattedUrl,
+          displayUrl: formattedUrl,
+          proxyContent: data,
+          history: newHistory,
+          historyIndex: newHistory.length - 1,
+          isLoading: false,
+          title
+        } : t);
       });
       
       toast({
@@ -101,12 +98,20 @@ export const ProxyBrowser = () => {
       });
     } catch (e) {
       console.error('Error loading URL:', e);
-      updateTab(tabId, { 
-        error: "Failed to load website. The site may be down or blocking proxy access.",
-        isLoading: false 
-      });
+      setTabs(prevTabs => prevTabs.map(t => 
+        t.id === tabId ? { 
+          ...t,
+          error: "Failed to load website. The site may be down or blocking proxy access.",
+          isLoading: false 
+        } : t
+      ));
     }
   };
+
+  useEffect(() => {
+    // Load the default URL on mount
+    loadUrlForTab("tab-1", "https://navis-proxy-v4.vercel.app/search.html");
+  }, []);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -183,8 +188,6 @@ export const ProxyBrowser = () => {
       setActiveTab(newTabs[newActiveIndex].id);
     }
   };
-
-  if (!currentTab) return null;
 
   return (
     <div className="flex flex-col h-screen bg-background">
