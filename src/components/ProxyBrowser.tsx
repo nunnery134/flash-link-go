@@ -194,8 +194,8 @@ export const ProxyBrowser = () => {
       {/* Tabs Bar */}
       <div className="glass-morphism border-b">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <div className="flex items-center gap-2 px-2 pt-2">
-            <TabsList className="h-9 flex-1 justify-start bg-transparent p-0 gap-1">
+          <div className="flex items-center px-2 pt-2">
+            <TabsList className="h-9 justify-start bg-transparent p-0 gap-1">
               {tabs.map((tab) => (
                 <TabsTrigger 
                   key={tab.id} 
@@ -213,15 +213,15 @@ export const ProxyBrowser = () => {
                   )}
                 </TabsTrigger>
               ))}
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={addNewTab}
+                className="h-9 w-9 ml-1"
+              >
+                <Plus className="h-4 w-4" />
+              </Button>
             </TabsList>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={addNewTab}
-              className="h-9 w-9"
-            >
-              <Plus className="h-4 w-4" />
-            </Button>
           </div>
         </Tabs>
       </div>
