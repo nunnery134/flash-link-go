@@ -352,7 +352,7 @@ export const ProxyBrowser = () => {
                 Navis Web
               </h1>
               <p className="text-muted-foreground text-lg">
-                Bypass these dictators
+                be a good boi or spankings
               </p>
               
               {/* Music Control */}
