@@ -38,7 +38,7 @@ export const MathSolver = ({ onClose }: MathSolverProps) => {
 
   const handleMouseUp = async () => {
     if (!isSelecting || !selectionStart || !selectionEnd) return;
-    
+
     setIsSelecting(false);
     setIsLoading(true);
 
@@ -49,27 +49,30 @@ export const MathSolver = ({ onClose }: MathSolverProps) => {
       const width = Math.abs(selectionEnd.x - selectionStart.x);
       const height = Math.abs(selectionEnd.y - selectionStart.y);
 
-      // Capture the entire viewport
+      // Adjust for scroll and improve quality
+      const scrollX = window.scrollX;
+      const scrollY = window.scrollY;
+
       const canvas = await html2canvas(document.body, {
-        x: x,
-        y: y,
-        width: width,
-        height: height,
+        x: x + scrollX,
+        y: y + scrollY,
+        width,
+        height,
         useCORS: true,
         allowTaint: true,
+        scale: 2, // improves image clarity
+        backgroundColor: null, // keeps transparency
       });
 
-      // Convert to base64
-      const imageData = canvas.toDataURL('image/png');
+      // Convert to base64 PNG
+      const imageData = canvas.toDataURL("image/png");
 
-      // Send to AI for solving
-      const { data, error } = await supabase.functions.invoke('solve-math', {
-        body: { image: imageData }
+      // Send image to Supabase Edge Function for solving
+      const { data, error } = await supabase.functions.invoke("solve-math", {
+        body: { image: imageData },
       });
 
-      if (error) {
-        throw error;
-      }
+      if (error) throw error;
 
       setSolution(data.solution);
       toast({
@@ -77,7 +80,7 @@ export const MathSolver = ({ onClose }: MathSolverProps) => {
         description: "See the solution below",
       });
     } catch (error) {
-      console.error('Error solving math:', error);
+      console.error("Error solving math:", error);
       toast({
         title: "Error",
         description: "Failed to solve the math problem. Please try again.",
@@ -92,22 +95,22 @@ export const MathSolver = ({ onClose }: MathSolverProps) => {
 
   const getSelectionStyle = () => {
     if (!selectionStart || !selectionEnd) return {};
-    
+
     const x = Math.min(selectionStart.x, selectionEnd.x);
     const y = Math.min(selectionStart.y, selectionEnd.y);
     const width = Math.abs(selectionEnd.x - selectionStart.x);
     const height = Math.abs(selectionEnd.y - selectionStart.y);
 
     return {
-      position: 'fixed' as const,
+      position: "fixed" as const,
       left: x,
       top: y,
       width,
       height,
-      border: '3px solid hsl(var(--primary))',
-      backgroundColor: 'rgba(255, 255, 255, 0.4)',
-      boxShadow: '0 0 0 9999px rgba(255, 255, 255, 0.2)',
-      pointerEvents: 'none' as const,
+      border: "3px solid hsl(var(--primary))",
+      backgroundColor: "rgba(255, 255, 255, 0.4)",
+      boxShadow: "0 0 0 9999px rgba(255, 255, 255, 0.2)",
+      pointerEvents: "none" as const,
       zIndex: 9999,
     };
   };
@@ -122,7 +125,7 @@ export const MathSolver = ({ onClose }: MathSolverProps) => {
           onMouseDown={handleMouseDown}
           onMouseMove={handleMouseMove}
           onMouseUp={handleMouseUp}
-          style={{ backgroundColor: 'rgba(255, 255, 255, 0.2)' }}
+          style={{ backgroundColor: "rgba(255, 255, 255, 0.2)" }}
         >
           {selectionStart && selectionEnd && <div style={getSelectionStyle()} />}
         </div>
@@ -135,12 +138,7 @@ export const MathSolver = ({ onClose }: MathSolverProps) => {
             <Camera className="h-5 w-5 text-primary" />
             <h2 className="font-semibold">Math AI Solver</h2>
           </div>
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={onClose}
-            className="h-8 w-8"
-          >
+          <Button variant="ghost" size="icon" onClick={onClose} className="h-8 w-8">
             <X className="h-4 w-4" />
           </Button>
         </div>
