@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { ArrowLeft, ArrowRight, RotateCw, Home, Shield, AlertCircle, Loader2, Plus, X } from "lucide-react";
+import { ArrowLeft, ArrowRight, RotateCw, Home, Shield, AlertCircle, Loader2, Plus, X, Play, Pause, Volume2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { supabase } from "@/integrations/supabase/client";
@@ -36,6 +36,8 @@ export const ProxyBrowser = () => {
   
   const [tabs, setTabs] = useState<TabState[]>([initialTab]);
   const [activeTab, setActiveTab] = useState<string>("tab-1");
+  const [isPlaying, setIsPlaying] = useState<boolean>(false);
+  const audioRef = useRef<HTMLIFrameElement>(null);
   const { toast } = useToast();
 
   const currentTab = tabs.find(t => t.id === activeTab);
@@ -189,6 +191,18 @@ export const ProxyBrowser = () => {
     }
   };
 
+  const toggleMusic = () => {
+    if (audioRef.current) {
+      if (isPlaying) {
+        audioRef.current.src = "";
+        setIsPlaying(false);
+      } else {
+        audioRef.current.src = "https://www.youtube.com/embed/99H578iry8s?autoplay=1&loop=1&playlist=99H578iry8s";
+        setIsPlaying(true);
+      }
+    }
+  };
+
   return (
     <div className="flex flex-col h-screen bg-background">
       {/* Tabs Bar */}
@@ -329,6 +343,25 @@ export const ProxyBrowser = () => {
                 Bypass these dictators
               </p>
               
+              {/* Music Control */}
+              <Button
+                onClick={toggleMusic}
+                variant="outline"
+                className="gap-2"
+              >
+                {isPlaying ? (
+                  <>
+                    <Pause className="h-4 w-4" />
+                    Pause Music
+                  </>
+                ) : (
+                  <>
+                    <Play className="h-4 w-4" />
+                    Play Music
+                  </>
+                )}
+              </Button>
+              
               {/* Google Search */}
               <form 
                 onSubmit={(e) => {
@@ -378,7 +411,7 @@ export const ProxyBrowser = () => {
             
             {/* Hidden YouTube Audio Player */}
             <iframe
-              src="https://www.youtube.com/embed/99H578iry8s?autoplay=1&loop=1&playlist=99H578iry8s"
+              ref={audioRef}
               allow="autoplay"
               className="hidden"
               title="Background Music"
