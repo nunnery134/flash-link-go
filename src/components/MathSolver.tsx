@@ -43,15 +43,16 @@ export const MathSolver = ({ onClose }: MathSolverProps) => {
     setIsLoading(true);
 
     try {
-      // Calculate selection bounds
       const x = Math.min(selectionStart.x, selectionEnd.x);
       const y = Math.min(selectionStart.y, selectionEnd.y);
       const width = Math.abs(selectionEnd.x - selectionStart.x);
       const height = Math.abs(selectionEnd.y - selectionStart.y);
 
-      // Adjust for scroll and improve quality
       const scrollX = window.scrollX;
       const scrollY = window.scrollY;
+
+      // Temporarily hide the selection overlay
+      if (overlayRef.current) overlayRef.current.style.display = "none";
 
       const canvas = await html2canvas(document.body, {
         x: x + scrollX,
@@ -60,14 +61,15 @@ export const MathSolver = ({ onClose }: MathSolverProps) => {
         height,
         useCORS: true,
         allowTaint: true,
-        scale: 2, // improves image clarity
-        backgroundColor: null, // keeps transparency
+        scale: 2,
+        backgroundColor: "#fff", // ensure math is visible
       });
 
-      // Convert to base64 PNG
+      // Restore overlay
+      if (overlayRef.current) overlayRef.current.style.display = "";
+
       const imageData = canvas.toDataURL("image/png");
 
-      // Send image to Supabase Edge Function for solving
       const { data, error } = await supabase.functions.invoke("solve-math", {
         body: { image: imageData },
       });
