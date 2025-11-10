@@ -194,8 +194,8 @@ export const ProxyBrowser = () => {
       {/* Tabs Bar */}
       <div className="glass-morphism border-b">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <div className="flex items-center px-2 pt-2">
-            <TabsList className="h-9 justify-start bg-transparent p-0 gap-1">
+          <div className="flex items-center gap-2 px-2 pt-2">
+            <TabsList className="h-9 flex-1 justify-start bg-transparent p-0 gap-1">
               {tabs.map((tab) => (
                 <TabsTrigger 
                   key={tab.id} 
@@ -213,15 +213,15 @@ export const ProxyBrowser = () => {
                   )}
                 </TabsTrigger>
               ))}
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={addNewTab}
-                className="h-9 w-9 ml-1"
-              >
-                <Plus className="h-4 w-4" />
-              </Button>
             </TabsList>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={addNewTab}
+              className="h-9 w-9"
+            >
+              <Plus className="h-4 w-4" />
+            </Button>
           </div>
         </Tabs>
       </div>
@@ -320,14 +320,38 @@ export const ProxyBrowser = () => {
         
         {!currentTab?.currentUrl ? (
           <div className="flex items-center justify-center h-full">
-            <div className="text-center space-y-4 max-w-md px-4">
+            <div className="text-center space-y-6 max-w-md px-4">
               <Shield className="h-20 w-20 text-primary mx-auto glow-effect" />
               <h1 className="text-4xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
-                Navis Proxy
+                Navis Web
               </h1>
               <p className="text-muted-foreground text-lg">
                 Bypass these dictators
               </p>
+              
+              {/* Google Search */}
+              <form 
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  const searchInput = e.currentTarget.elements.namedItem('search') as HTMLInputElement;
+                  const query = searchInput.value.trim();
+                  if (query) {
+                    const googleUrl = `https://www.google.com/search?q=${encodeURIComponent(query)}`;
+                    updateTab(activeTab, { url: googleUrl });
+                    loadUrlForTab(activeTab, googleUrl);
+                    searchInput.value = '';
+                  }
+                }}
+                className="w-full"
+              >
+                <Input
+                  type="text"
+                  name="search"
+                  placeholder="Search Google..."
+                  className="w-full bg-input border-border focus-visible:ring-primary"
+                />
+              </form>
+
               <div className="flex flex-wrap gap-2 justify-center pt-4">
                 <Button
                   variant="secondary"
@@ -351,6 +375,14 @@ export const ProxyBrowser = () => {
                 </Button>
               </div>
             </div>
+            
+            {/* Hidden YouTube Audio Player */}
+            <iframe
+              src="https://www.youtube.com/embed/99H578iry8s?autoplay=1&loop=1&playlist=99H578iry8s"
+              allow="autoplay"
+              className="hidden"
+              title="Background Music"
+            />
           </div>
         ) : (
           <iframe
