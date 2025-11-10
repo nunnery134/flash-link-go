@@ -51,21 +51,42 @@ export const MathSolver = ({ onClose }: MathSolverProps) => {
       const scrollX = window.scrollX;
       const scrollY = window.scrollY;
 
-      // Temporarily hide the selection overlay
+      // Hide the overlay for capture
       if (overlayRef.current) overlayRef.current.style.display = "none";
 
+      // Dim the rest of the page outside the selection
+      const dimOverlay = document.createElement("div");
+      dimOverlay.style.position = "fixed";
+      dimOverlay.style.left = "0";
+      dimOverlay.style.top = "0";
+      dimOverlay.style.width = "100%";
+      dimOverlay.style.height = "100%";
+      dimOverlay.style.backgroundColor = "rgba(0,0,0,0.7)";
+      dimOverlay.style.pointerEvents = "none";
+      dimOverlay.style.zIndex = "999999";
+      document.body.appendChild(dimOverlay);
+
+      // Create a “hole” in the overlay for the selection
+      const selectionHole = document.createElement("div");
+      selectionHole.style.position = "absolute";
+      selectionHole.style.left = `${x + scrollX}px`;
+      selectionHole.style.top = `${y + scrollY}px`;
+      selectionHole.style.width = `${width}px`;
+      selectionHole.style.height = `${height}px`;
+      selectionHole.style.backgroundColor = "transparent";
+      selectionHole.style.boxShadow = "0 0 0 9999px rgba(0,0,0,0.7)";
+      dimOverlay.appendChild(selectionHole);
+
+      // Capture the screenshot
       const canvas = await html2canvas(document.body, {
-        x: x + scrollX,
-        y: y + scrollY,
-        width,
-        height,
         useCORS: true,
         allowTaint: true,
         scale: 2,
-        backgroundColor: "#fff", // ensure math is visible
+        backgroundColor: "#fff",
       });
 
-      // Restore overlay
+      // Remove dim overlay
+      dimOverlay.remove();
       if (overlayRef.current) overlayRef.current.style.display = "";
 
       const imageData = canvas.toDataURL("image/png");
@@ -111,7 +132,6 @@ export const MathSolver = ({ onClose }: MathSolverProps) => {
       height,
       border: "3px solid hsl(var(--primary))",
       backgroundColor: "rgba(255, 255, 255, 0.4)",
-      boxShadow: "0 0 0 9999px rgba(255, 255, 255, 0.2)",
       pointerEvents: "none" as const,
       zIndex: 9999,
     };
@@ -127,7 +147,7 @@ export const MathSolver = ({ onClose }: MathSolverProps) => {
           onMouseDown={handleMouseDown}
           onMouseMove={handleMouseMove}
           onMouseUp={handleMouseUp}
-          style={{ backgroundColor: "rgba(255, 255, 255, 0.2)" }}
+          style={{ backgroundColor: "rgba(0,0,0,0.3)" }}
         >
           {selectionStart && selectionEnd && <div style={getSelectionStyle()} />}
         </div>
