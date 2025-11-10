@@ -51,42 +51,25 @@ export const MathSolver = ({ onClose }: MathSolverProps) => {
       const scrollX = window.scrollX;
       const scrollY = window.scrollY;
 
-      // Hide the overlay for capture
+      // Hide overlay during capture
       if (overlayRef.current) overlayRef.current.style.display = "none";
 
-      // Dim the rest of the page outside the selection
-      const dimOverlay = document.createElement("div");
-      dimOverlay.style.position = "fixed";
-      dimOverlay.style.left = "0";
-      dimOverlay.style.top = "0";
-      dimOverlay.style.width = "100%";
-      dimOverlay.style.height = "100%";
-      dimOverlay.style.backgroundColor = "rgba(0,0,0,0.7)";
-      dimOverlay.style.pointerEvents = "none";
-      dimOverlay.style.zIndex = "999999";
-      document.body.appendChild(dimOverlay);
-
-      // Create a “hole” in the overlay for the selection
-      const selectionHole = document.createElement("div");
-      selectionHole.style.position = "absolute";
-      selectionHole.style.left = `${x + scrollX}px`;
-      selectionHole.style.top = `${y + scrollY}px`;
-      selectionHole.style.width = `${width}px`;
-      selectionHole.style.height = `${height}px`;
-      selectionHole.style.backgroundColor = "transparent";
-      selectionHole.style.boxShadow = "0 0 0 9999px rgba(0,0,0,0.7)";
-      dimOverlay.appendChild(selectionHole);
-
-      // Capture the screenshot
+      // Capture only the selected rectangle
       const canvas = await html2canvas(document.body, {
         useCORS: true,
         allowTaint: true,
         scale: 2,
         backgroundColor: "#fff",
+        x: x + scrollX,
+        y: y + scrollY,
+        width,
+        height,
+        ignoreElements: (el) => {
+          // Ignore the MathSolver panel itself
+          return el === overlayRef.current || el.closest(".math-solver-panel");
+        },
       });
 
-      // Remove dim overlay
-      dimOverlay.remove();
       if (overlayRef.current) overlayRef.current.style.display = "";
 
       const imageData = canvas.toDataURL("image/png");
@@ -147,14 +130,14 @@ export const MathSolver = ({ onClose }: MathSolverProps) => {
           onMouseDown={handleMouseDown}
           onMouseMove={handleMouseMove}
           onMouseUp={handleMouseUp}
-          style={{ backgroundColor: "rgba(0,0,0,0.3)" }}
+          style={{ backgroundColor: "rgba(0,0,0,0.5)" }} // darken rest of page
         >
           {selectionStart && selectionEnd && <div style={getSelectionStyle()} />}
         </div>
       )}
 
       {/* Math Solver Panel */}
-      <div className="fixed right-4 top-20 z-50 w-96 glass-morphism rounded-lg shadow-xl border border-border animate-fade-in">
+      <div className="fixed right-4 top-20 z-50 w-96 glass-morphism rounded-lg shadow-xl border border-border animate-fade-in math-solver-panel">
         <div className="flex items-center justify-between p-4 border-b border-border">
           <div className="flex items-center gap-2">
             <Camera className="h-5 w-5 text-primary" />
