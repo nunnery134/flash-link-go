@@ -2,10 +2,11 @@ import { useState, useRef, useEffect } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { ArrowLeft, ArrowRight, RotateCw, Home, Shield, AlertCircle, Loader2, Plus, X, Play, Pause, Volume2 } from "lucide-react";
+import { ArrowLeft, ArrowRight, RotateCw, Home, Shield, AlertCircle, Loader2, Plus, X, Play, Pause, Volume2, Calculator } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { supabase } from "@/integrations/supabase/client";
+import { MathSolver } from "./MathSolver";
 
 interface TabState {
   id: string;
@@ -37,6 +38,7 @@ export const ProxyBrowser = () => {
   const [tabs, setTabs] = useState<TabState[]>([initialTab]);
   const [activeTab, setActiveTab] = useState<string>("tab-1");
   const [isPlaying, setIsPlaying] = useState<boolean>(false);
+  const [showMathSolver, setShowMathSolver] = useState<boolean>(false);
   const audioRef = useRef<HTMLIFrameElement>(null);
   const { toast } = useToast();
 
@@ -294,6 +296,16 @@ export const ProxyBrowser = () => {
                 className="pl-10 bg-input border-border focus-visible:ring-primary transition-smooth"
               />
             </div>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              onClick={() => setShowMathSolver(!showMathSolver)}
+              className="transition-smooth hover:bg-secondary"
+              title="Math AI Solver"
+            >
+              <Calculator className="h-4 w-4" />
+            </Button>
             <Button 
               type="submit" 
               disabled={!currentTab?.url || currentTab?.isLoading}
@@ -426,6 +438,9 @@ export const ProxyBrowser = () => {
           />
         )}
       </div>
+
+      {/* Math Solver Extension */}
+      {showMathSolver && <MathSolver onClose={() => setShowMathSolver(false)} />}
     </div>
   );
 };
