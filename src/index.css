@@ -2,47 +2,52 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
-All colors MUST be HSL.
-*/
-
 @layer base {
   :root {
-    --background: 220 25% 8%;
-    --foreground: 210 40% 98%;
+    /* Background & foreground */
+    --background: 240 20% 5%; /* Deep space dark blue */
+    --foreground: 220 40% 95%; /* Light gray for text */
 
-    --card: 220 20% 12%;
-    --card-foreground: 210 40% 98%;
+    /* Cards & Popovers */
+    --card: 240 25% 12%; /* Dark galaxy card */
+    --card-foreground: 220 40% 95%;
 
-    --popover: 220 20% 12%;
-    --popover-foreground: 210 40% 98%;
+    --popover: 240 25% 12%;
+    --popover-foreground: 220 40% 95%;
 
-    --primary: 189 95% 52%;
-    --primary-foreground: 220 25% 8%;
+    /* Primary / Accent Colors */
+    --primary: 280 80% 60%; /* Neon purple */
+    --primary-foreground: 240 20% 5%; 
 
-    --secondary: 220 18% 18%;
-    --secondary-foreground: 210 40% 98%;
+    --secondary: 220 30% 18%; /* Deep blue accent */
+    --secondary-foreground: 220 40% 95%;
 
-    --muted: 220 18% 20%;
-    --muted-foreground: 215 20% 65%;
+    --muted: 240 25% 15%;
+    --muted-foreground: 220 30% 75%;
 
-    --accent: 189 95% 52%;
-    --accent-foreground: 220 25% 8%;
+    --accent: 290 85% 65%; /* Pink-purple nebula accent */
+    --accent-foreground: 240 20% 5%;
 
-    --destructive: 0 72% 51%;
-    --destructive-foreground: 210 40% 98%;
+    --destructive: 0 75% 60%; /* Red for destructive actions */
+    --destructive-foreground: 220 40% 95%;
 
-    --border: 220 18% 20%;
-    --input: 220 18% 18%;
-    --ring: 189 95% 52%;
+    /* Borders, inputs, rings */
+    --border: 240 25% 15%;
+    --input: 240 25% 15%;
+    --ring: 280 80% 60%;
 
+    /* Radius & other effects */
     --radius: 0.75rem;
 
-    --chrome-glass: 220 20% 12% / 0.8;
-    --chrome-border: 220 18% 25%;
-    --glow-primary: 189 95% 52% / 0.2;
-    
+    --chrome-glass: 240 25% 15% / 0.7;
+    --chrome-border: 240 20% 25%;
+    --glow-primary: 280 80% 60% / 0.3;
+
     --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+
+    /* Optional: galaxy background gradient */
+    --galaxy-gradient: radial-gradient(circle at 20% 20%, hsl(280 85% 65%) 0%, hsl(240 25% 12%) 80%),
+                        radial-gradient(circle at 80% 80%, hsl(220 40% 60%) 0%, transparent 70%);
   }
 }
 
@@ -54,6 +59,9 @@ All colors MUST be HSL.
   body {
     @apply bg-background text-foreground;
     font-feature-settings: "rlig" 1, "calt" 1;
+    background-image: var(--galaxy-gradient);
+    background-size: cover;
+    background-attachment: fixed;
   }
 
   .glass-morphism {
@@ -63,7 +71,7 @@ All colors MUST be HSL.
   }
 
   .glow-effect {
-    box-shadow: 0 0 20px hsl(var(--glow-primary));
+    box-shadow: 0 0 30px hsl(var(--glow-primary));
   }
 
   .transition-smooth {
