@@ -104,8 +104,9 @@ export const MathSolver = ({ onClose }: MathSolverProps) => {
       top: y,
       width,
       height,
-      border: '2px dashed hsl(var(--primary))',
-      backgroundColor: 'hsl(var(--primary) / 0.1)',
+      border: '3px solid hsl(var(--primary))',
+      backgroundColor: 'rgba(255, 255, 255, 0.4)',
+      boxShadow: '0 0 0 9999px rgba(255, 255, 255, 0.2)',
       pointerEvents: 'none' as const,
       zIndex: 9999,
     };
@@ -121,7 +122,7 @@ export const MathSolver = ({ onClose }: MathSolverProps) => {
           onMouseDown={handleMouseDown}
           onMouseMove={handleMouseMove}
           onMouseUp={handleMouseUp}
-          style={{ backgroundColor: 'rgba(0, 0, 0, 0.3)' }}
+          style={{ backgroundColor: 'rgba(255, 255, 255, 0.2)' }}
         >
           {selectionStart && selectionEnd && <div style={getSelectionStyle()} />}
         </div>
