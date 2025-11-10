@@ -39,8 +39,11 @@ export const MathSolver = ({ onClose }: MathSolverProps) => {
   const handleMouseUp = async () => {
     if (!isSelecting || !selectionStart || !selectionEnd) return;
 
-    // Immediately hide the overlay so it disappears "one and done"
+    // Immediately hide overlay and panel
     if (overlayRef.current) overlayRef.current.style.display = "none";
+    const panelEl = document.querySelector(".math-solver-panel");
+    if (panelEl) panelEl.setAttribute("data-html2canvas-ignore", "true");
+
     setIsSelecting(false);
     setIsLoading(true);
 
@@ -49,25 +52,31 @@ export const MathSolver = ({ onClose }: MathSolverProps) => {
       const y = Math.min(selectionStart.y, selectionEnd.y);
       const width = Math.abs(selectionEnd.x - selectionStart.x);
       const height = Math.abs(selectionEnd.y - selectionStart.y);
+      if (width === 0 || height === 0) {
+        throw new Error("Selection width or height is zero");
+      }
 
       const scrollX = window.scrollX;
       const scrollY = window.scrollY;
 
-      // Capture only the selected rectangle
       const canvas = await html2canvas(document.body, {
-        useCORS: true,
-        allowTaint: true,
-        scale: 2,
-        backgroundColor: "#fff",
         x: x + scrollX,
         y: y + scrollY,
         width,
         height,
+        scale: 2,
+        backgroundColor: "#fff",
+        useCORS: true,
+        allowTaint: true,
         ignoreElements: (el) => {
-          return el === overlayRef.current || el.closest(".math-solver-panel");
+          if (el.hasAttribute("data-html2canvas-ignore")) return true;
+          if (el.closest(".math-solver-panel")) return true;
+          return false;
         },
       });
 
+      // Restore panel visibility
+      if (panelEl) panelEl.removeAttribute("data-html2canvas-ignore");
       if (overlayRef.current) overlayRef.current.style.display = "";
 
       const imageData = canvas.toDataURL("image/png");
@@ -83,8 +92,8 @@ export const MathSolver = ({ onClose }: MathSolverProps) => {
         title: "Math problem solved!",
         description: "See the solution below",
       });
-    } catch (error) {
-      console.error("Error solving math:", error);
+    } catch (err) {
+      console.error("Error solving math:", err);
       toast({
         title: "Error",
         description: "Failed to solve the math problem. Please try again.",
@@ -99,12 +108,10 @@ export const MathSolver = ({ onClose }: MathSolverProps) => {
 
   const getSelectionStyle = () => {
     if (!selectionStart || !selectionEnd) return {};
-
     const x = Math.min(selectionStart.x, selectionEnd.x);
     const y = Math.min(selectionStart.y, selectionEnd.y);
     const width = Math.abs(selectionEnd.x - selectionStart.x);
     const height = Math.abs(selectionEnd.y - selectionStart.y);
-
     return {
       position: "fixed" as const,
       left: x,
@@ -112,7 +119,7 @@ export const MathSolver = ({ onClose }: MathSolverProps) => {
       width,
       height,
       border: "3px solid hsl(var(--primary))",
-      backgroundColor: "rgba(255, 255, 255, 0.4)",
+      backgroundColor: "rgba(255,255,255,0.4)",
       pointerEvents: "none" as const,
       zIndex: 9999,
     };
@@ -120,7 +127,6 @@ export const MathSolver = ({ onClose }: MathSolverProps) => {
 
   return (
     <>
-      {/* Selection overlay */}
       {isSelecting && (
         <div
           ref={overlayRef}
@@ -128,14 +134,16 @@ export const MathSolver = ({ onClose }: MathSolverProps) => {
           onMouseDown={handleMouseDown}
           onMouseMove={handleMouseMove}
           onMouseUp={handleMouseUp}
-          style={{ backgroundColor: "rgba(0,0,0,0.5)" }} // darken rest of page
+          style={{ backgroundColor: "rgba(0,0,0,0.4)" }}
         >
           {selectionStart && selectionEnd && <div style={getSelectionStyle()} />}
         </div>
       )}
 
-      {/* Math Solver Panel */}
-      <div className="fixed right-4 top-20 z-50 w-96 glass-morphism rounded-lg shadow-xl border border-border animate-fade-in math-solver-panel">
+      <div
+        className="fixed right-4 top-20 z-50 w-96 glass-morphism rounded-lg shadow-xl border border-border animate-fade-in math-solver-panel"
+        data-html2canvas-ignore="true"
+      >
         <div className="flex items-center justify-between p-4 border-b border-border">
           <div className="flex items-center gap-2">
             <Camera className="h-5 w-5 text-primary" />
@@ -177,7 +185,7 @@ export const MathSolver = ({ onClose }: MathSolverProps) => {
 
           {!solution && !isLoading && (
             <div className="text-center text-muted-foreground text-sm py-8">
-              Click the button above to screenshot a math problem and get an AI-powered solution
+              Click the button above to screenshot a math problem and get an AI‑powered solution
             </div>
           )}
         </div>
