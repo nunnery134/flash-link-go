@@ -39,6 +39,8 @@ export const MathSolver = ({ onClose }: MathSolverProps) => {
   const handleMouseUp = async () => {
     if (!isSelecting || !selectionStart || !selectionEnd) return;
 
+    // Immediately hide the overlay so it disappears "one and done"
+    if (overlayRef.current) overlayRef.current.style.display = "none";
     setIsSelecting(false);
     setIsLoading(true);
 
@@ -51,9 +53,6 @@ export const MathSolver = ({ onClose }: MathSolverProps) => {
       const scrollX = window.scrollX;
       const scrollY = window.scrollY;
 
-      // Hide overlay during capture
-      if (overlayRef.current) overlayRef.current.style.display = "none";
-
       // Capture only the selected rectangle
       const canvas = await html2canvas(document.body, {
         useCORS: true,
@@ -65,7 +64,6 @@ export const MathSolver = ({ onClose }: MathSolverProps) => {
         width,
         height,
         ignoreElements: (el) => {
-          // Ignore the MathSolver panel itself
           return el === overlayRef.current || el.closest(".math-solver-panel");
         },
       });
