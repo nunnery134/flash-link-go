@@ -45,28 +45,20 @@ export const MathSolver = ({ onClose }: MathSolverProps) => {
     setIsLoading(true);
 
     try {
-      // Ask the browser to capture the screen
-      const stream = await navigator.mediaDevices.getDisplayMedia({ video: true });
-      const track = stream.getVideoTracks()[0];
-      const imageCapture = new ImageCapture(track);
-      const bitmap = await imageCapture.grabFrame();
-
-      // Draw to canvas and crop selection
-      const canvas = document.createElement("canvas");
-      canvas.width = selectionRect.width * 2; // optional: higher res
-      canvas.height = selectionRect.height * 2;
-      const ctx = canvas.getContext("2d");
-      if (!ctx) throw new Error("Cannot get canvas context");
-
-      ctx.drawImage(
-        bitmap,
-        selectionRect.x, selectionRect.y, selectionRect.width, selectionRect.height,
-        0, 0, canvas.width, canvas.height
-      );
+      // Use html2canvas to capture the selected area
+      const html2canvas = (await import('html2canvas')).default;
+      
+      // Capture the entire viewport
+      const canvas = await html2canvas(document.body, {
+        x: selectionRect.x,
+        y: selectionRect.y,
+        width: selectionRect.width,
+        height: selectionRect.height,
+        useCORS: true,
+        allowTaint: true,
+      });
 
       const imageData = canvas.toDataURL("image/png");
-
-      track.stop(); // stop capture
 
       // Send to AI
       const { data, error } = await supabase.functions.invoke("solve-math", { body: { image: imageData } });
