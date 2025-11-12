@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { ArrowLeft, ArrowRight, RotateCw, Home, Shield, AlertCircle, Loader2, Plus, X, Play, Pause, Volume2, Calculator, Star } from "lucide-react";
+import { ArrowLeft, ArrowRight, RotateCw, Home, Shield, AlertCircle, Loader2, Plus, X, Play, Pause, Volume2, Calculator, Star, Maximize, Minimize } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { supabase } from "@/integrations/supabase/client";
@@ -47,6 +47,9 @@ export const ProxyBrowser = () => {
   const [showMathSolver, setShowMathSolver] = useState<boolean>(false);
   const [bookmarks, setBookmarks] = useState<Bookmark[]>([]);
   const [showBookmarks, setShowBookmarks] = useState<boolean>(false);
+  const [isFullscreen, setIsFullscreen] = useState<boolean>(false);
+  const [escPressCount, setEscPressCount] = useState<number>(0);
+  const escTimerRef = useRef<NodeJS.Timeout | null>(null);
   const audioRef = useRef<HTMLIFrameElement>(null);
   const { toast } = useToast();
 
@@ -233,9 +236,48 @@ export const ProxyBrowser = () => {
 
   const isBookmarked = currentTab?.currentUrl && bookmarks.some(b => b.url === currentTab.currentUrl);
 
+  const toggleFullscreen = () => {
+    setIsFullscreen(!isFullscreen);
+    if (!isFullscreen) {
+      toast({ title: "Fullscreen Mode", description: "Press ESC twice to exit" });
+    }
+  };
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && isFullscreen) {
+        setEscPressCount(prev => prev + 1);
+        
+        if (escTimerRef.current) {
+          clearTimeout(escTimerRef.current);
+        }
+        
+        if (escPressCount + 1 >= 2) {
+          setIsFullscreen(false);
+          setEscPressCount(0);
+          toast({ title: "Exited Fullscreen" });
+        } else {
+          toast({ title: "Press ESC one more time to exit fullscreen" });
+          escTimerRef.current = setTimeout(() => {
+            setEscPressCount(0);
+          }, 1000);
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      if (escTimerRef.current) {
+        clearTimeout(escTimerRef.current);
+      }
+    };
+  }, [isFullscreen, escPressCount, toast]);
+
   return (
     <div className="flex flex-col h-screen bg-background">
       {/* Tabs Bar */}
+      {!isFullscreen && (
       <div className="glass-morphism border-b">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <div className="flex items-center gap-1 px-2 pt-2">
@@ -248,12 +290,12 @@ export const ProxyBrowser = () => {
                 >
                   <span className="truncate text-sm">{tab.title}</span>
                   {tabs.length > 1 && (
-                    <button
+                    <span
                       onClick={(e) => closeTab(tab.id, e)}
-                      className="ml-2 hover:bg-muted rounded-sm p-0.5"
+                      className="ml-2 hover:bg-muted rounded-sm p-0.5 cursor-pointer inline-flex"
                     >
                       <X className="h-3 w-3" />
-                    </button>
+                    </span>
                   )}
                 </TabsTrigger>
               ))}
@@ -266,11 +308,22 @@ export const ProxyBrowser = () => {
                 <Plus className="h-4 w-4" />
               </Button>
             </TabsList>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={toggleFullscreen}
+              className="h-9 w-9 flex-shrink-0"
+              title="Fullscreen"
+            >
+              <Maximize className="h-4 w-4" />
+            </Button>
           </div>
         </Tabs>
       </div>
+      )}
 
       {/* Browser Chrome */}
+      {!isFullscreen && (
       <div className="glass-morphism border-b">
         <div className="flex items-center gap-2 p-3">
           {/* Navigation Buttons */}
@@ -362,6 +415,22 @@ export const ProxyBrowser = () => {
           </form>
         </div>
       </div>
+      )}
+
+      {/* Fullscreen Exit Indicator */}
+      {isFullscreen && (
+        <div className="absolute top-4 right-4 z-50 glass-morphism px-4 py-2 rounded-lg flex items-center gap-2 animate-fade-in">
+          <span className="text-sm text-muted-foreground">Press ESC twice to exit fullscreen</span>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={toggleFullscreen}
+            className="h-8 w-8"
+          >
+            <Minimize className="h-4 w-4" />
+          </Button>
+        </div>
+      )}
 
       {/* Error Message */}
       {currentTab?.error && (
