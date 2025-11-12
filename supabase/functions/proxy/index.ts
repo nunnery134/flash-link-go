@@ -50,7 +50,7 @@ serve(async (req) => {
     // Get the response body
     let content = await response.text();
 
-    // If it's HTML, modify relative URLs to absolute URLs
+    // If it's HTML, modify relative URLs to absolute URLs and inject navigation interceptor
     if (contentType.includes('text/html')) {
       const urlObj = new URL(url);
       const baseUrl = `${urlObj.protocol}//${urlObj.host}`;
@@ -60,6 +60,34 @@ serve(async (req) => {
         .replace(/href=["'](?!http|\/\/|#|javascript:|mailto:)([^"']+)["']/gi, `href="${baseUrl}/$1"`)
         .replace(/src=["'](?!http|\/\/|data:)([^"']+)["']/gi, `src="${baseUrl}/$1"`)
         .replace(/url\(["']?(?!http|\/\/|data:)([^"')]+)["']?\)/gi, `url(${baseUrl}/$1)`);
+      
+      // Inject JavaScript to intercept link clicks and post to parent
+      const interceptScript = `
+        <script>
+          (function() {
+            document.addEventListener('click', function(e) {
+              var target = e.target;
+              while (target && target.tagName !== 'A') {
+                target = target.parentElement;
+              }
+              if (target && target.tagName === 'A' && target.href) {
+                var href = target.href;
+                if (href && !href.startsWith('javascript:') && !href.startsWith('mailto:') && !href.startsWith('#')) {
+                  e.preventDefault();
+                  window.parent.postMessage({ type: 'PROXY_NAVIGATE', url: href }, '*');
+                }
+              }
+            }, true);
+          })();
+        </script>
+      `;
+      
+      // Inject before closing body tag, or at the end if no body tag
+      if (content.includes('</body>')) {
+        content = content.replace('</body>', interceptScript + '</body>');
+      } else {
+        content = content + interceptScript;
+      }
     }
 
     console.log('Successfully fetched URL:', url);

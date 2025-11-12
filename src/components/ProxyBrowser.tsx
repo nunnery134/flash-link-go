@@ -274,6 +274,18 @@ export const ProxyBrowser = () => {
     };
   }, [isFullscreen, escPressCount, toast]);
 
+  // Listen for navigation messages from iframe
+  useEffect(() => {
+    const handleMessage = (event: MessageEvent) => {
+      if (event.data && event.data.type === 'PROXY_NAVIGATE' && event.data.url) {
+        loadUrlForTab(activeTab, event.data.url);
+      }
+    };
+
+    window.addEventListener('message', handleMessage);
+    return () => window.removeEventListener('message', handleMessage);
+  }, [activeTab, loadUrlForTab]);
+
   return (
     <div className="flex flex-col h-screen bg-background">
       {/* Tabs Bar */}
