@@ -443,6 +443,73 @@ export const ProxyBrowser = () => {
         {!currentTab?.currentUrl ? (
           <div className="flex items-center justify-center h-full">
             <div className="text-center space-y-6 max-w-2xl px-4">
-              <p className="text-muted-foreground text-sm">be a good boi or spankings</p>
+              <div className="mb-8">
+                <img 
+                  src="https://www.google.com/images/branding/googlelogo/2x/googlelogo_color_272x92dp.png" 
+                  alt="Google" 
+                  className="mx-auto mb-4 h-16 opacity-90"
+                />
+              </div>
+
+              {bookmarks.length > 0 && (
+                <div className="mb-6">
+                  <h3 className="text-sm font-semibold mb-3 text-foreground">Bookmarks</h3>
+                  <div className="flex flex-wrap gap-2 justify-center">
+                    {bookmarks.map((bookmark) => (
+                      <Button
+                        key={bookmark.id}
+                        variant="outline"
+                        size="sm"
+                        onClick={() => loadUrlForTab(activeTab, bookmark.url)}
+                        className="text-xs"
+                      >
+                        {bookmark.title}
+                      </Button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              <div className="space-y-2">
+                <h3 className="text-sm font-semibold text-foreground">Quick Links</h3>
+                <div className="flex flex-wrap gap-2 justify-center">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => loadUrlForTab(activeTab, "https://www.youtube.com")}
+                  >
+                    YouTube
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => loadUrlForTab(activeTab, "https://www.crazygames.com")}
+                  >
+                    CrazyGames
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => loadUrlForTab(activeTab, "https://www.wikipedia.org")}
+                  >
+                    Wikipedia
+                  </Button>
+                </div>
+              </div>
             </div>
           </div>
+        ) : (
+          <iframe
+            srcDoc={currentTab.proxyContent}
+            className="w-full h-full border-0"
+            sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
+            title="Proxied Content"
+          />
+        )}
+      </div>
+
+      {showMathSolver && <MathSolver onClose={() => setShowMathSolver(false)} />}
+      <NavisRadio />
+    </div>
+  );
+};
