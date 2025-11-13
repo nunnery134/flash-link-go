@@ -231,7 +231,20 @@ export const ProxyBrowser = () => {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (currentTab && currentTab.url) loadUrlForTab(activeTab, currentTab.url);
+    if (!currentTab || !currentTab.url) return;
+    
+    // Check if it's a search query or URL
+    const input = currentTab.url.trim();
+    const isUrl = input.includes('.') && !input.includes(' ');
+    
+    if (isUrl) {
+      // It's a URL, load it directly
+      loadUrlForTab(activeTab, input);
+    } else {
+      // It's a search query, use Google search
+      const searchUrl = `https://www.google.com/search?q=${encodeURIComponent(input)}`;
+      loadUrlForTab(activeTab, searchUrl);
+    }
   };
 
   const handleBack = () => {
@@ -449,6 +462,27 @@ export const ProxyBrowser = () => {
                   alt="Google" 
                   className="mx-auto mb-4 h-16 opacity-90"
                 />
+                <form 
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    const searchInput = e.currentTarget.elements.namedItem('search') as HTMLInputElement;
+                    if (searchInput.value.trim()) {
+                      const searchUrl = `https://www.google.com/search?q=${encodeURIComponent(searchInput.value)}`;
+                      loadUrlForTab(activeTab, searchUrl);
+                    }
+                  }}
+                  className="max-w-xl mx-auto"
+                >
+                  <div className="flex gap-2">
+                    <Input
+                      name="search"
+                      type="text"
+                      placeholder="Search Google or enter URL"
+                      className="bg-input border-border"
+                    />
+                    <Button type="submit">Search</Button>
+                  </div>
+                </form>
               </div>
 
               {bookmarks.length > 0 && (
