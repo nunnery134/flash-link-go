@@ -243,7 +243,7 @@ const NavisRadio = () => {
 export const ProxyBrowser = () => {
   const initialTab: TabState = {
     id: "tab-1",
-    url: "https://navis-proxy-v4.vercel.app/search.html",
+    url: "",
     currentUrl: "",
     displayUrl: "",
     isLoading: false,
