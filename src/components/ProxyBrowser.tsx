@@ -12,6 +12,7 @@ interface TabState {
   id: string;
   url: string;
   currentUrl: string;
+  proxyContent: string;
   history: string[];
   historyIndex: number;
   title: string;
@@ -33,6 +34,7 @@ export const ProxyBrowser = () => {
     id: "tab-1",
     url: "",
     currentUrl: "",
+    proxyContent: "",
     history: [],
     historyIndex: -1,
     title: "Navis Web",
@@ -53,35 +55,37 @@ export const ProxyBrowser = () => {
     setTabs(prev => prev.map(t => t.id === id ? { ...t, ...updates } : t));
   };
 
-  const addNewTab = () => {
-    const newTab: TabState = {
-      id: `tab-${Date.now()}`,
-      url: "",
-      currentUrl: "",
-      history: [],
-      historyIndex: -1,
-      title: "Navis Web",
-      bookmarked: false,
-    };
-    setTabs(prev => [...prev, newTab]);
-    setActiveTab(newTab.id);
-  };
+  const loadUrlForTab = async (tabId: string, targetUrl: string) => {
+    const url = targetUrl.startsWith("http") ? targetUrl : `https://${targetUrl}`;
+    updateTab(tabId, { currentUrl: url, proxyContent: "", title: url });
 
-  const closeTab = (tabId: string, e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (tabs.length === 1) return;
-    const index = tabs.findIndex(t => t.id === tabId);
-    const newTabs = tabs.filter(t => t.id !== tabId);
-    setTabs(newTabs);
-    if (activeTab === tabId) {
-      setActiveTab(newTabs[index > 0 ? index - 1 : 0].id);
+    try {
+      const res = await fetch("/functions/proxy", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url }),
+      });
+      const html = await res.text();
+      updateTab(tabId, {
+        proxyContent: html,
+        title: new URL(url).hostname || url,
+      });
+
+      // Update history
+      const tab = tabs.find(t => t.id === tabId);
+      if (tab) {
+        const newHistory = tab.history.slice(0, tab.historyIndex + 1);
+        newHistory.push(url);
+        updateTab(tabId, { history: newHistory, historyIndex: newHistory.length - 1 });
+      }
+    } catch (err) {
+      toast({ title: "Error", description: "Failed to load page" });
     }
   };
 
   const navigateTo = (input: string) => {
     if (!currentTab) return;
     let url = "";
-
     if (
       input.endsWith(".com") ||
       input.endsWith(".org") ||
@@ -92,19 +96,9 @@ export const ProxyBrowser = () => {
     ) {
       url = input.startsWith("http") ? input : `https://${input}`;
     } else {
-      // Search Google inside iframe
       url = `https://www.google.com/search?q=${encodeURIComponent(input)}`;
     }
-
-    const newHistory = currentTab.history.slice(0, currentTab.historyIndex + 1);
-    newHistory.push(url);
-    updateTab(activeTab, {
-      url,
-      currentUrl: url,
-      history: newHistory,
-      historyIndex: newHistory.length - 1,
-      title: url,
-    });
+    loadUrlForTab(activeTab, url);
   };
 
   const handleSearchSubmit = (e: React.FormEvent<HTMLFormElement>) => {
@@ -119,20 +113,19 @@ export const ProxyBrowser = () => {
   const handleBack = () => {
     if (!currentTab || currentTab.historyIndex <= 0) return;
     const newIndex = currentTab.historyIndex - 1;
-    const url = currentTab.history[newIndex];
-    updateTab(activeTab, { historyIndex: newIndex, currentUrl: url });
+    loadUrlForTab(activeTab, currentTab.history[newIndex]);
+    updateTab(activeTab, { historyIndex: newIndex });
   };
 
   const handleForward = () => {
     if (!currentTab || currentTab.historyIndex >= currentTab.history.length - 1) return;
     const newIndex = currentTab.historyIndex + 1;
-    const url = currentTab.history[newIndex];
-    updateTab(activeTab, { historyIndex: newIndex, currentUrl: url });
+    loadUrlForTab(activeTab, currentTab.history[newIndex]);
+    updateTab(activeTab, { historyIndex: newIndex });
   };
 
   const handleHome = () => {
-    if (!currentTab) return;
-    updateTab(activeTab, { url: "", currentUrl: "", history: [], historyIndex: -1, title: "Navis Web" });
+    updateTab(activeTab, { url: "", currentUrl: "", proxyContent: "", history: [], historyIndex: -1, title: "Navis Web" });
   };
 
   const toggleMusic = () => {
@@ -151,10 +144,27 @@ export const ProxyBrowser = () => {
     updateTab(activeTab, { bookmarked: !currentTab.bookmarked });
   };
 
+  const addNewTab = () => {
+    const newTab: TabState = { ...initialTab, id: `tab-${Date.now()}` };
+    setTabs(prev => [...prev, newTab]);
+    setActiveTab(newTab.id);
+  };
+
+  const closeTab = (tabId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (tabs.length === 1) return;
+    const index = tabs.findIndex(t => t.id === tabId);
+    const newTabs = tabs.filter(t => t.id !== tabId);
+    setTabs(newTabs);
+    if (activeTab === tabId) {
+      setActiveTab(newTabs[index > 0 ? index - 1 : 0].id);
+    }
+  };
+
   return (
     <div className="flex flex-col h-screen bg-background">
 
-      {/* Tabs Bar */}
+      {/* Tabs */}
       {!isFullScreen && (
         <div className="glass-morphism border-b">
           <Tabs value={activeTab} onValueChange={setActiveTab}>
@@ -168,20 +178,17 @@ export const ProxyBrowser = () => {
                 ))}
                 <Button onClick={addNewTab} variant="ghost" size="icon"><Plus className="h-4 w-4" /></Button>
               </TabsList>
-              <Button onClick={() => setIsFullScreen(!isFullScreen)} variant="ghost" size="icon">
-                {isFullScreen ? <Minimize className="h-4 w-4" /> : <Maximize className="h-4 w-4" />}
-              </Button>
+              <Button onClick={() => setIsFullScreen(!isFullScreen)} variant="ghost" size="icon">{isFullScreen ? <Minimize className="h-4 w-4" /> : <Maximize className="h-4 w-4" />}</Button>
             </div>
           </Tabs>
         </div>
       )}
 
-      {/* Browser Chrome */}
+      {/* Toolbar */}
       <div className="glass-morphism border-b p-3 flex items-center gap-2">
         <div className="flex gap-1">
           <Button onClick={handleBack} variant="ghost" size="icon"><ArrowLeft className="h-4 w-4" /></Button>
           <Button onClick={handleForward} variant="ghost" size="icon"><ArrowRight className="h-4 w-4" /></Button>
-          <Button onClick={() => currentTab && updateTab(activeTab, { currentUrl: currentTab.currentUrl })} variant="ghost" size="icon"><RotateCw className="h-4 w-4" /></Button>
           <Button onClick={handleHome} variant="ghost" size="icon"><Home className="h-4 w-4" /></Button>
         </div>
 
@@ -190,9 +197,9 @@ export const ProxyBrowser = () => {
             <Shield className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-primary z-10" />
             <Input type="text" name="search" placeholder="Enter URL or search..." className="pl-10 bg-input border-border" />
           </div>
-
           <Button onClick={() => setShowMathSolver(!showMathSolver)} variant="ghost" size="icon"><Calculator className="h-4 w-4" /></Button>
 
+          {/* VPN */}
           <div className="flex items-center gap-2">
             <Button onClick={() => setVpnEnabled(!vpnEnabled)} variant="outline" size="sm" className={`flex items-center gap-1 px-2 py-1 rounded ${vpnEnabled ? "border-green-500" : "border-gray-400"}`}><Shield className={`h-4 w-4 ${vpnEnabled ? "text-green-500" : "text-gray-400"}`} />{vpnEnabled && <span>{vpnRegions.find(r => r.code === vpnRegion)?.flag} {vpnRegion.toUpperCase()}</span>}</Button>
             <select value={vpnRegion} onChange={(e) => setVpnRegion(e.target.value)} disabled={!vpnEnabled} className="px-2 py-1 rounded bg-input">{vpnRegions.map(r => <option key={r.code} value={r.code}>{r.flag} {r.label}</option>)}</select>
@@ -213,7 +220,7 @@ export const ProxyBrowser = () => {
             <iframe ref={audioRef} allow="autoplay" className="hidden" title="Background Music" />
           </div>
         ) : (
-          <iframe src={currentTab.currentUrl} className="w-full h-full border-0" sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-popups-to-escape-sandbox allow-modals" title={currentTab.title} />
+          <iframe srcDoc={currentTab.proxyContent} className="w-full h-full border-0" sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-popups-to-escape-sandbox allow-modals" title={currentTab.title} />
         )}
       </div>
 
