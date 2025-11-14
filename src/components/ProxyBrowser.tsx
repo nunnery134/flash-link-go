@@ -34,7 +34,7 @@ export const ProxyBrowser = () => {
     proxyContent: "",
     title: "New Tab"
   };
-  
+
   const [tabs, setTabs] = useState<TabState[]>([initialTab]);
   const [activeTab, setActiveTab] = useState<string>("tab-1");
   const [isPlaying, setIsPlaying] = useState<boolean>(false);
@@ -43,6 +43,7 @@ export const ProxyBrowser = () => {
   const { toast } = useToast();
 
   const currentTab = tabs.find(t => t.id === activeTab);
+
   const updateTab = (id: string, updates: Partial<TabState>) => {
     setTabs(tabs.map(t => t.id === id ? { ...t, ...updates } : t));
   };
@@ -63,16 +64,12 @@ export const ProxyBrowser = () => {
     
     try {
       new URL(formattedUrl);
-      
-      console.log('Loading URL through proxy:', formattedUrl);
-      
+
       const { data, error: proxyError } = await supabase.functions.invoke('proxy', {
         body: { url: formattedUrl }
       });
 
-      if (proxyError) {
-        throw new Error(proxyError.message);
-      }
+      if (proxyError) throw new Error(proxyError.message);
 
       setTabs(prevTabs => {
         const tab = prevTabs.find(t => t.id === tabId);
@@ -80,7 +77,6 @@ export const ProxyBrowser = () => {
 
         const newHistory = tab.history.slice(0, tab.historyIndex + 1);
         newHistory.push(formattedUrl);
-        
         const urlObj = new URL(formattedUrl);
         const title = urlObj.hostname || "New Tab";
 
@@ -95,33 +91,23 @@ export const ProxyBrowser = () => {
           title
         } : t);
       });
-      
-      toast({
-        title: "Success!",
-        description: "Website loaded through proxy",
-      });
+
+      toast({ title: "Success!", description: "Website loaded through proxy" });
     } catch (e) {
       console.error('Error loading URL:', e);
       setTabs(prevTabs => prevTabs.map(t => 
-        t.id === tabId ? { 
-          ...t,
-          error: "Failed to load website. The site may be down or blocking proxy access.",
-          isLoading: false 
-        } : t
+        t.id === tabId ? { ...t, error: "Failed to load website. The site may be down or blocking proxy access.", isLoading: false } : t
       ));
     }
   };
 
   useEffect(() => {
-    // Load the default URL on mount
     loadUrlForTab("tab-1", "https://navis-proxy-v4.vercel.app/search.html");
   }, []);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (currentTab && currentTab.url) {
-      loadUrlForTab(activeTab, currentTab.url);
-    }
+    if (currentTab && currentTab.url) loadUrlForTab(activeTab, currentTab.url);
   };
 
   const handleBack = () => {
@@ -145,9 +131,7 @@ export const ProxyBrowser = () => {
   };
 
   const handleRefresh = () => {
-    if (currentTab?.currentUrl) {
-      loadUrlForTab(activeTab, currentTab.currentUrl);
-    }
+    if (currentTab?.currentUrl) loadUrlForTab(activeTab, currentTab.currentUrl);
   };
 
   const handleHome = () => {
@@ -182,11 +166,9 @@ export const ProxyBrowser = () => {
   const closeTab = (tabId: string, e: React.MouseEvent) => {
     e.stopPropagation();
     if (tabs.length === 1) return;
-    
     const tabIndex = tabs.findIndex(t => t.id === tabId);
     const newTabs = tabs.filter(t => t.id !== tabId);
     setTabs(newTabs);
-    
     if (activeTab === tabId) {
       const newActiveIndex = tabIndex > 0 ? tabIndex - 1 : 0;
       setActiveTab(newTabs[newActiveIndex].id);
@@ -207,29 +189,30 @@ export const ProxyBrowser = () => {
 
   return (
     <div className="flex flex-col h-screen bg-background">
+
       {/* Tabs Bar */}
       <div className="glass-morphism border-b">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <div className="flex items-center gap-2 px-2 pt-2">
-            <TabsList className="h-9 flex-1 justify-start bg-transparent p-0 gap-1">
-              {tabs.map((tab) => (
-                <TabsTrigger 
-                  key={tab.id} 
-                  value={tab.id}
-                  className="relative max-w-[200px] px-4 py-2 data-[state=active]:bg-background/50 rounded-t-lg"
-                >
-                  <span className="truncate text-sm">{tab.title}</span>
-                  {tabs.length > 1 && (
-                    <button
-                      onClick={(e) => closeTab(tab.id, e)}
-                      className="ml-2 hover:bg-muted rounded-sm p-0.5"
-                    >
-                      <X className="h-3 w-3" />
-                    </button>
-                  )}
-                </TabsTrigger>
-              ))}
-            </TabsList>
+          <TabsList className="h-9 flex items-center gap-1 bg-transparent p-0">
+            {tabs.map((tab) => (
+              <TabsTrigger 
+                key={tab.id} 
+                value={tab.id}
+                className="relative max-w-[200px] px-4 py-2 data-[state=active]:bg-background/50 rounded-t-lg"
+              >
+                <span className="truncate text-sm">{tab.title}</span>
+                {tabs.length > 1 && (
+                  <button
+                    onClick={(e) => closeTab(tab.id, e)}
+                    className="ml-2 hover:bg-muted rounded-sm p-0.5"
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                )}
+              </TabsTrigger>
+            ))}
+
+            {/* + Button right next to tabs */}
             <Button
               variant="ghost"
               size="icon"
@@ -238,7 +221,7 @@ export const ProxyBrowser = () => {
             >
               <Plus className="h-4 w-4" />
             </Button>
-          </div>
+          </TabsList>
         </Tabs>
       </div>
 
