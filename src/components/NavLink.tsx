@@ -6,34 +6,29 @@ interface NavLinkCompatProps extends Omit<NavLinkProps, "className" | "to"> {
   className?: string;
   activeClassName?: string;
   pendingClassName?: string;
-  to: string; // single input string
+  to: string | string[]; // allow single or multiple links
 }
 
 const NavLink = forwardRef<HTMLAnchorElement, NavLinkCompatProps>(
   ({ className, activeClassName, pendingClassName, to, ...props }, ref) => {
-    // Determine URL
-    const formattedUrl = (() => {
-      const trimmed = to.trim();
-      if (
-        trimmed.endsWith(".com") ||
-        trimmed.endsWith(".org") ||
-        trimmed.endsWith(".net") ||
-        trimmed.endsWith(".io") ||
-        trimmed.endsWith(".co") ||
-        trimmed.endsWith(".gov")
-      ) {
-        return trimmed.startsWith("http") ? trimmed : `https://${trimmed}`;
-      } else {
-        return `https://www.google.com/search?q=${encodeURIComponent(trimmed)}`;
+    const checkIsActive = (pathname: string) => {
+      if (Array.isArray(to)) {
+        return to.includes(pathname);
       }
-    })();
+      return pathname === to;
+    };
 
     return (
       <RouterNavLink
         ref={ref}
-        to={formattedUrl}
-        className={({ isActive, isPending }) =>
-          cn(className, isActive && activeClassName, isPending && pendingClassName)
+        to={Array.isArray(to) ? to[0] : to} // use first as `to` prop for Router
+        className={({ isActive, isPending, location }) =>
+          cn(
+            className,
+            (isActive || (Array.isArray(to) && checkIsActive(location.pathname))) &&
+              activeClassName,
+            isPending && pendingClassName
+          )
         }
         {...props}
       />
