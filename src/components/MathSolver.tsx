@@ -2,7 +2,6 @@ import { useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { X, Camera, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { supabase } from "@/integrations/supabase/client";
 
 interface MathSolverProps {
   onClose: () => void;
@@ -45,10 +44,8 @@ export const MathSolver = ({ onClose }: MathSolverProps) => {
     setIsLoading(true);
 
     try {
-      // Use html2canvas to capture the selected area
-      const html2canvas = (await import('html2canvas')).default;
-      
-      // Capture the entire viewport
+      const html2canvas = (await import("html2canvas")).default;
+
       const canvas = await html2canvas(document.body, {
         x: selectionRect.x,
         y: selectionRect.y,
@@ -58,17 +55,40 @@ export const MathSolver = ({ onClose }: MathSolverProps) => {
         allowTaint: true,
       });
 
-      const imageData = canvas.toDataURL("image/png");
+      const imageData = canvas.toDataURL("image/png").split(",")[1]; // base64 only
 
-      // Send to AI
-      const { data, error } = await supabase.functions.invoke("solve-math", { body: { image: imageData } });
-      if (error) throw error;
+      const response = await fetch(
+        "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=" +
+          import.meta.env.VITE_GEMINI_API_KEY,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            contents: [
+              {
+                parts: [
+                  { text: "Solve the math problem shown in this screenshot. Explain step-by-step." },
+                  {
+                    inlineData: {
+                      mimeType: "image/png",
+                      data: imageData,
+                    },
+                  },
+                ],
+              },
+            ],
+          }),
+        }
+      );
 
-      setSolution(data.solution);
-      toast({ title: "Math problem solved!", description: "See solution below" });
+      const json = await response.json();
+      const aiText = json?.candidates?.[0]?.content?.parts?.[0]?.text ?? "No solution found.";
+
+      setSolution(aiText);
+      toast({ title: "Solved!", description: "AI generated a solution." });
     } catch (err) {
       console.error(err);
-      toast({ title: "Error", description: "Failed to capture or solve math.", variant: "destructive" });
+      toast({ title: "Error", description: "Failed to capture or solve using Gemini.", variant: "destructive" });
     } finally {
       setIsLoading(false);
       setSelectionRect(null);
@@ -110,12 +130,13 @@ export const MathSolver = ({ onClose }: MathSolverProps) => {
         <div className="flex items-center justify-between p-4 border-b border-border">
           <div className="flex items-center gap-2">
             <Camera className="h-5 w-5 text-primary" />
-            <h2 className="font-semibold">Math AI Solver</h2>
+            <h2 className="font-semibold">Math AI Solver (Gemini)</h2>
           </div>
           <Button variant="ghost" size="icon" onClick={onClose} className="h-8 w-8">
             <X className="h-4 w-4" />
           </Button>
         </div>
+
         <div className="p-4 space-y-4">
           <Button onClick={startSelection} disabled={isSelecting || isLoading} className="w-full">
             {isSelecting ? "Select area on screen..." : <>
@@ -123,20 +144,23 @@ export const MathSolver = ({ onClose }: MathSolverProps) => {
               Screenshot & Solve
             </>}
           </Button>
+
           {isLoading && (
             <div className="flex items-center justify-center py-8">
               <Loader2 className="h-8 w-8 animate-spin text-primary" />
             </div>
           )}
+
           {solution && (
             <div className="bg-background/50 rounded-lg p-4 max-h-96 overflow-y-auto">
               <h3 className="font-semibold mb-2">Solution:</h3>
               <div className="whitespace-pre-wrap text-sm">{solution}</div>
             </div>
           )}
+
           {!solution && !isLoading && (
             <div className="text-center text-muted-foreground text-sm py-8">
-              Click the button above to screenshot a math problem and get an AI-powered solution
+              Click the button above to screenshot a math problem and get an AI solution from Gemini.
             </div>
           )}
         </div>
