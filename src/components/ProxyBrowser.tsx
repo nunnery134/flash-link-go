@@ -222,20 +222,11 @@ export const ProxyBrowser = () => {
             <Loader2 className="h-12 w-12 text-primary mx-auto animate-spin glow-effect" />
           </div>
         )}
-
         {currentTab?.currentUrl ? (
           <iframe src={currentTab.currentUrl} className="w-full h-full border-0" title="Browser Content" sandbox="allow-same-origin allow-scripts allow-forms allow-popups" />
         ) : (
-          <div className="flex flex-col items-center justify-center h-full text-center space-y-4">
-            <Shield className="h-20 w-20 text-primary mx-auto glow-effect" />
-            <h1 className="text-4xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">Navis Web</h1>
-            <p className="text-muted-foreground text-lg">Bypass these dictators</p>
-            <Button onClick={toggleMusic} variant="outline" className="gap-2">
-              {isPlaying ? <><Pause className="h-4 w-4" />Pause Music</> : <><Play className="h-4 w-4" />Play Music</>}
-            </Button>
-            <form onSubmit={(e) => { e.preventDefault(); const val = (e.currentTarget.elements.namedItem('search') as HTMLInputElement).value.trim(); if (val) navigateTo(val); (e.currentTarget.elements.namedItem('search') as HTMLInputElement).value = ''; }} className="w-full max-w-md mx-auto">
-              <Input type="text" name="search" placeholder="Search Google or enter link..." className="w-full bg-input border-border focus-visible:ring-primary" />
-            </form>
+          <div className="flex items-center justify-center h-full text-center">
+            <h2 className="text-2xl font-bold text-muted-foreground">Enter a website or search above</h2>
           </div>
         )}
         <iframe ref={audioRef} allow="autoplay" className="hidden" title="Background Music" />
