@@ -1,39 +1,37 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
-  ArrowLeft, ArrowRight, RotateCw, Home, Shield, AlertCircle, Loader2, 
+  ArrowLeft, ArrowRight, RotateCw, Home, Shield, Loader2, 
   Plus, X, Play, Pause, Calculator, Maximize, Minimize, Star 
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { Alert, AlertDescription } from "@/components/ui/alert";
 import { MathSolver } from "./MathSolver";
 
 interface TabState {
   id: string;
   url: string;
   currentUrl: string;
-  displayUrl: string;
-  isLoading: boolean;
-  error: string | null;
-  history: string[];
-  historyIndex: number;
   title: string;
+  isLoading: boolean;
   bookmarked?: boolean;
 }
+
+const vpnRegions = [
+  { code: "usa", label: "USA", flag: "🇺🇸" },
+  { code: "uk", label: "UK", flag: "🇬🇧" },
+  { code: "japan", label: "Japan", flag: "🇯🇵" },
+  { code: "canada", label: "Canada", flag: "🇨🇦" },
+];
 
 export const ProxyBrowser = () => {
   const initialTab: TabState = {
     id: "tab-1",
     url: "",
     currentUrl: "",
-    displayUrl: "",
-    isLoading: false,
-    error: null,
-    history: [],
-    historyIndex: -1,
     title: "New Tab",
+    isLoading: false,
     bookmarked: false
   };
 
@@ -42,6 +40,8 @@ export const ProxyBrowser = () => {
   const [isPlaying, setIsPlaying] = useState<boolean>(false);
   const [showMathSolver, setShowMathSolver] = useState<boolean>(false);
   const [isFullScreen, setIsFullScreen] = useState<boolean>(false);
+  const [vpnEnabled, setVpnEnabled] = useState<boolean>(false);
+  const [vpnRegion, setVpnRegion] = useState<string>("usa");
   const audioRef = useRef<HTMLIFrameElement>(null);
   const { toast } = useToast();
 
@@ -51,20 +51,13 @@ export const ProxyBrowser = () => {
     setTabs(tabs.map(t => t.id === id ? { ...t, ...updates } : t));
   };
 
-  const loadUrlForTab = (tabId: string, url: string) => {
-    updateTab(tabId, { currentUrl: url, displayUrl: url, isLoading: true, error: null });
-    setTimeout(() => {
-      updateTab(tabId, { isLoading: false }); // Simulate load
-    }, 500);
-  };
-
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!currentTab?.url) return;
 
     const input = currentTab.url.trim();
+    let url: string;
 
-    // Check if input looks like a URL
     if (
       input.endsWith(".com") ||
       input.endsWith(".org") ||
@@ -73,47 +66,24 @@ export const ProxyBrowser = () => {
       input.endsWith(".co") ||
       input.endsWith(".gov")
     ) {
-      const url = input.startsWith("http") ? input : `https://${input}`;
-      updateTab(activeTab, { url });
-      loadUrlForTab(activeTab, url);
+      // Direct website
+      url = input.startsWith("http") ? input : `https://${input}`;
     } else {
-      // Google search for anything else
-      const googleUrl = `https://www.google.com/search?q=${encodeURIComponent(input)}`;
-      window.open(googleUrl, "_blank");
+      // Google search
+      url = `https://www.google.com/search?q=${encodeURIComponent(input)}`;
     }
-  };
 
-  const handleBack = () => {
-    if (!currentTab) return;
-    if (currentTab.historyIndex > 0) {
-      const newIndex = currentTab.historyIndex - 1;
-      const url = currentTab.history[newIndex];
-      updateTab(activeTab, { historyIndex: newIndex, url });
-      loadUrlForTab(activeTab, url);
+    // Add VPN parameter if enabled (optional, can be handled in future)
+    if (vpnEnabled) {
+      url += `&region=${vpnRegion}`;
     }
-  };
 
-  const handleForward = () => {
-    if (!currentTab) return;
-    if (currentTab.historyIndex < currentTab.history.length - 1) {
-      const newIndex = currentTab.historyIndex + 1;
-      const url = currentTab.history[newIndex];
-      updateTab(activeTab, { historyIndex: newIndex, url });
-      loadUrlForTab(activeTab, url);
-    }
-  };
-
-  const handleRefresh = () => {
-    if (currentTab?.currentUrl) loadUrlForTab(activeTab, currentTab.currentUrl);
-  };
-
-  const handleHome = () => {
-    if (!currentTab) return;
-    updateTab(activeTab, { url: "", currentUrl: "", displayUrl: "", error: null, title: "New Tab" });
+    updateTab(activeTab, { currentUrl: url, isLoading: true });
+    setTimeout(() => updateTab(activeTab, { isLoading: false }), 500);
   };
 
   const addNewTab = () => {
-    const newTab: TabState = { id: `tab-${Date.now()}`, url: "", currentUrl: "", displayUrl: "", isLoading: false, error: null, history: [], historyIndex: -1, title: "New Tab", bookmarked: false };
+    const newTab: TabState = { id: `tab-${Date.now()}`, url: "", currentUrl: "", title: "New Tab", isLoading: false, bookmarked: false };
     setTabs([...tabs, newTab]);
     setActiveTab(newTab.id);
   };
@@ -142,7 +112,7 @@ export const ProxyBrowser = () => {
   };
 
   const toggleFullScreen = () => setIsFullScreen(!isFullScreen);
-  const toggleBookmark = (tabId: string) => { setTabs(prev => prev.map(t => t.id === tabId ? { ...t, bookmarked: !t.bookmarked } : t)); };
+  const toggleBookmark = (tabId: string) => setTabs(prev => prev.map(t => t.id === tabId ? { ...t, bookmarked: !t.bookmarked } : t));
 
   return (
     <div className="flex flex-col h-screen bg-background">
@@ -161,7 +131,6 @@ export const ProxyBrowser = () => {
                 ))}
                 <Button variant="ghost" size="icon" onClick={addNewTab} className="h-9 w-9"><Plus className="h-4 w-4" /></Button>
               </TabsList>
-
               <Button variant="ghost" size="icon" onClick={toggleFullScreen} className="h-9 w-9">
                 {isFullScreen ? <Minimize className="h-4 w-4" /> : <Maximize className="h-4 w-4" />}
               </Button>
@@ -170,24 +139,37 @@ export const ProxyBrowser = () => {
         </div>
       )}
 
-      {/* Browser Chrome */}
+      {/* Address Bar */}
       <div className="glass-morphism border-b">
         <div className="flex items-center gap-2 p-3">
-          <div className="flex gap-1">
-            <Button variant="ghost" size="icon" onClick={handleBack} disabled={!currentTab || currentTab.historyIndex <= 0}><ArrowLeft className="h-4 w-4" /></Button>
-            <Button variant="ghost" size="icon" onClick={handleForward} disabled={!currentTab || currentTab.historyIndex >= currentTab.history.length - 1}><ArrowRight className="h-4 w-4" /></Button>
-            <Button variant="ghost" size="icon" onClick={handleRefresh} disabled={!currentTab?.currentUrl}><RotateCw className={`h-4 w-4 ${currentTab?.isLoading ? "animate-spin" : ""}`} /></Button>
-            <Button variant="ghost" size="icon" onClick={handleHome}><Home className="h-4 w-4" /></Button>
-          </div>
-
           <form onSubmit={handleSubmit} className="flex-1 flex gap-2 items-center">
             <div className="flex-1 relative">
               <Shield className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-primary z-10" />
-              <Input type="text" value={currentTab?.url || ""} onChange={(e) => updateTab(activeTab, { url: e.target.value })} placeholder="Enter a website or search..." className="pl-10 bg-input border-border focus-visible:ring-primary" />
+              <Input type="text" value={currentTab?.url || ""} onChange={(e) => updateTab(activeTab, { url: e.target.value })} placeholder="Enter website or search..." className="pl-10 bg-input border-border focus-visible:ring-primary" />
             </div>
 
+            {/* Calculator */}
             <Button type="button" variant="ghost" size="icon" onClick={() => setShowMathSolver(!showMathSolver)}><Calculator className="h-4 w-4" /></Button>
+
+            {/* Music */}
             <Button type="button" variant="outline" onClick={toggleMusic}>{isPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}</Button>
+
+            {/* VPN */}
+            <div className="flex items-center gap-2">
+              <Button variant="outline" size="sm" onClick={() => setVpnEnabled(!vpnEnabled)} className={`flex items-center gap-1 px-2 py-1 rounded ${vpnEnabled ? "border-green-500" : "border-gray-400"}`} title={`Navi VPN ${vpnEnabled ? "ON" : "OFF"}`}>
+                <Shield className={`h-4 w-4 ${vpnEnabled ? "text-green-500" : "text-gray-400"}`} />
+                {vpnEnabled && <span className="text-xs font-medium">{vpnRegions.find(r => r.code === vpnRegion)?.flag} {vpnRegion.toUpperCase()}</span>}
+              </Button>
+              <select value={vpnRegion} onChange={(e) => setVpnRegion(e.target.value)} className="bg-input border-border px-2 py-1 rounded" disabled={!vpnEnabled}>
+                {vpnRegions.map(r => <option key={r.code} value={r.code}>{r.flag} {r.label}</option>)}
+              </select>
+            </div>
+
+            {/* Bookmark */}
+            <Button type="button" variant="ghost" size="icon" onClick={() => toggleBookmark(activeTab)}>
+              <Star className={`h-4 w-4 ${currentTab?.bookmarked ? "text-yellow-400" : "text-gray-400"}`} />
+            </Button>
+
             <Button type="submit" disabled={!currentTab?.url || currentTab?.isLoading} className="bg-primary text-primary-foreground hover:bg-primary/90 min-w-[80px]">
               {currentTab?.isLoading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : "Go"}
             </Button>
@@ -195,16 +177,15 @@ export const ProxyBrowser = () => {
         </div>
       </div>
 
-      {/* Content */}
+      {/* Browser Content */}
       <div className="flex-1 relative overflow-hidden bg-card">
         {currentTab?.isLoading && (
           <div className="absolute inset-0 flex items-center justify-center bg-background/80 backdrop-blur-sm z-50">
             <Loader2 className="h-12 w-12 text-primary mx-auto animate-spin glow-effect" />
           </div>
         )}
-
         {currentTab?.currentUrl ? (
-          <iframe src={currentTab.currentUrl} className="w-full h-full border-0" title="Browser Content" />
+          <iframe src={currentTab.currentUrl} className="w-full h-full border-0" title="Browser Content" sandbox="allow-same-origin allow-scripts allow-forms allow-popups" />
         ) : (
           <div className="flex items-center justify-center h-full text-center">
             <h2 className="text-2xl font-bold text-muted-foreground">Enter a website or search above</h2>
