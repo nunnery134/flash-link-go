@@ -1,138 +1,184 @@
 import { useState, useRef } from "react";
+import { Button } from "@/components/ui/button";
+import { X, Camera, Loader2 } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 import html2canvas from "html2canvas";
-import Tesseract from "tesseract.js"; // OCR to read text from screenshot
-import { evaluate, parse } from "mathjs";
 
-export default function LocalMathSolver() {
+interface MathSolverProps {
+  onClose: () => void;
+}
+
+export const MathSolver = ({ onClose }: MathSolverProps) => {
   const [isSelecting, setIsSelecting] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [solution, setSolution] = useState("");
-  const [selectionRect, setSelectionRect] = useState(null);
-  const [startPoint, setStartPoint] = useState(null);
+  const [solution, setSolution] = useState<string>("");
+  const [selectionStart, setSelectionStart] = useState<{ x: number; y: number } | null>(null);
+  const [selectionEnd, setSelectionEnd] = useState<{ x: number; y: number } | null>(null);
+  const overlayRef = useRef<HTMLDivElement>(null);
+  const { toast } = useToast();
 
   const startSelection = () => {
     setIsSelecting(true);
+    setSelectionStart(null);
+    setSelectionEnd(null);
     setSolution("");
-    setSelectionRect(null);
-    setStartPoint(null);
   };
 
-  const handleMouseDown = (e) => {
+  const handleMouseDown = (e: React.MouseEvent) => {
     if (!isSelecting) return;
-    setStartPoint({ x: e.clientX, y: e.clientY });
-    setSelectionRect({ x: e.clientX, y: e.clientY, width: 0, height: 0 });
+    setSelectionStart({ x: e.clientX, y: e.clientY });
+    setSelectionEnd({ x: e.clientX, y: e.clientY });
   };
 
-  const handleMouseMove = (e) => {
-    if (!isSelecting || !startPoint) return;
-    const x = Math.min(startPoint.x, e.clientX);
-    const y = Math.min(startPoint.y, e.clientY);
-    const width = Math.abs(e.clientX - startPoint.x);
-    const height = Math.abs(e.clientY - startPoint.y);
-    setSelectionRect({ x, y, width, height });
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (!isSelecting || !selectionStart) return;
+    setSelectionEnd({ x: e.clientX, y: e.clientY });
   };
 
   const handleMouseUp = async () => {
-    if (!selectionRect) return;
+    if (!isSelecting || !selectionStart || !selectionEnd) return;
+
     setIsSelecting(false);
     setIsLoading(true);
 
     try {
-      // Take screenshot of selected area
+      // Calculate selection bounds
+      const x = Math.min(selectionStart.x, selectionEnd.x);
+      const y = Math.min(selectionStart.y, selectionEnd.y);
+      const width = Math.abs(selectionEnd.x - selectionStart.x);
+      const height = Math.abs(selectionEnd.y - selectionStart.y);
+
+      // Adjust for scroll and improve quality
+      const scrollX = window.scrollX;
+      const scrollY = window.scrollY;
+
       const canvas = await html2canvas(document.body, {
-        x: selectionRect.x,
-        y: selectionRect.y,
-        width: selectionRect.width,
-        height: selectionRect.height,
+        x: x + scrollX,
+        y: y + scrollY,
+        width,
+        height,
         useCORS: true,
         allowTaint: true,
+        scale: 2, // improves image clarity
+        backgroundColor: null, // keeps transparency
       });
 
-      // Use OCR to read text from screenshot
-      const { data } = await Tesseract.recognize(canvas, "eng", { logger: m => console.log(m) });
-      const problemText = data.text.replace(/\n/g, "").trim();
-      console.log("Detected Problem:", problemText);
+      // Convert to base64 PNG
+      const imageData = canvas.toDataURL("image/png");
 
-      // Solve using math.js
-      let result;
-      try {
-        result = evaluate(problemText);
-      } catch {
-        result = "Could not solve automatically. Try simpler format.";
-      }
+      // Send image to Supabase Edge Function for solving
+      const { data, error } = await supabase.functions.invoke("solve-math", {
+        body: { image: imageData },
+      });
 
-      setSolution(`Problem: ${problemText}\nSolution: ${result}`);
-    } catch (err) {
-      console.error(err);
-      setSolution("Error reading or solving the problem.");
+      if (error) throw error;
+
+      setSolution(data.solution);
+      toast({
+        title: "Math problem solved!",
+        description: "See the solution below",
+      });
+    } catch (error) {
+      console.error("Error solving math:", error);
+      toast({
+        title: "Error",
+        description: "Failed to solve the math problem. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+      setSelectionStart(null);
+      setSelectionEnd(null);
     }
-
-    setIsLoading(false);
-    setSelectionRect(null);
-    setStartPoint(null);
   };
 
-  const overlayStyle =
-    selectionRect && isSelecting
-      ? {
-          position: "fixed",
-          left: selectionRect.x,
-          top: selectionRect.y,
-          width: selectionRect.width,
-          height: selectionRect.height,
-          border: "3px solid #4f46e5",
-          backgroundColor: "rgba(255,255,255,0.3)",
-          pointerEvents: "none",
-          zIndex: 9999,
-        }
-      : {};
+  const getSelectionStyle = () => {
+    if (!selectionStart || !selectionEnd) return {};
+
+    const x = Math.min(selectionStart.x, selectionEnd.x);
+    const y = Math.min(selectionStart.y, selectionEnd.y);
+    const width = Math.abs(selectionEnd.x - selectionStart.x);
+    const height = Math.abs(selectionEnd.y - selectionStart.y);
+
+    return {
+      position: "fixed" as const,
+      left: x,
+      top: y,
+      width,
+      height,
+      border: "3px solid hsl(var(--primary))",
+      backgroundColor: "rgba(255, 255, 255, 0.4)",
+      boxShadow: "0 0 0 9999px rgba(255, 255, 255, 0.2)",
+      pointerEvents: "none" as const,
+      zIndex: 9999,
+    };
+  };
 
   return (
     <>
-      {/* Screenshot selection overlay */}
+      {/* Selection overlay */}
       {isSelecting && (
         <div
-          className="fixed inset-0 cursor-crosshair"
+          ref={overlayRef}
+          className="fixed inset-0 z-[9998] cursor-crosshair"
           onMouseDown={handleMouseDown}
           onMouseMove={handleMouseMove}
           onMouseUp={handleMouseUp}
-          style={{ backgroundColor: "rgba(0,0,0,0.35)", zIndex: 9998 }}
+          style={{ backgroundColor: "rgba(255, 255, 255, 0.2)" }}
         >
-          {selectionRect && <div style={overlayStyle} />}
+          {selectionStart && selectionEnd && <div style={getSelectionStyle()} />}
         </div>
       )}
 
-      {/* Panel */}
-      <div
-        className="fixed right-4 top-20 w-96 p-4 rounded-xl shadow-xl"
-        style={{ background: "#1e1e1e", color: "white", zIndex: 2000 }}
-      >
-        <h2 className="text-lg font-bold mb-3">Local Math Solver</h2>
-
-        <button
-          onClick={startSelection}
-          disabled={isSelecting || isLoading}
-          className="w-full bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg py-2"
-        >
-          {isSelecting ? "Select the math problem..." : "Screenshot & Solve"}
-        </button>
-
-        {isLoading && (
-          <div className="text-center text-gray-300 py-6">Solving...</div>
-        )}
-
-        {!isLoading && solution && (
-          <div className="bg-black/30 p-3 rounded-lg mt-4 max-h-80 overflow-y-auto text-sm whitespace-pre-wrap">
-            {solution}
+      {/* Math Solver Panel */}
+      <div className="fixed right-4 top-20 z-50 w-96 glass-morphism rounded-lg shadow-xl border border-border animate-fade-in">
+        <div className="flex items-center justify-between p-4 border-b border-border">
+          <div className="flex items-center gap-2">
+            <Camera className="h-5 w-5 text-primary" />
+            <h2 className="font-semibold">Math AI Solver</h2>
           </div>
-        )}
+          <Button variant="ghost" size="icon" onClick={onClose} className="h-8 w-8">
+            <X className="h-4 w-4" />
+          </Button>
+        </div>
 
-        {!isLoading && !solution && (
-          <div className="text-gray-400 text-center text-sm py-6">
-            Screenshot a math problem to get an instant solution.
-          </div>
-        )}
+        <div className="p-4 space-y-4">
+          <Button
+            onClick={startSelection}
+            disabled={isSelecting || isLoading}
+            className="w-full"
+          >
+            {isSelecting ? (
+              "Select area on screen..."
+            ) : (
+              <>
+                <Camera className="h-4 w-4 mr-2" />
+                Screenshot & Solve
+              </>
+            )}
+          </Button>
+
+          {isLoading && (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            </div>
+          )}
+
+          {solution && (
+            <div className="bg-background/50 rounded-lg p-4 max-h-96 overflow-y-auto">
+              <h3 className="font-semibold mb-2">Solution:</h3>
+              <div className="whitespace-pre-wrap text-sm">{solution}</div>
+            </div>
+          )}
+
+          {!solution && !isLoading && (
+            <div className="text-center text-muted-foreground text-sm py-8">
+              Click the button above to screenshot a math problem and get an AI-powered solution
+            </div>
+          )}
+        </div>
       </div>
     </>
   );
-}
+};
