@@ -112,7 +112,31 @@ export const ProxyBrowser = () => {
     loadUrlForTab("tab-1", "https://navis-proxy-v4.vercel.app/search.html");
   }, []);
 
-  const handleSubmit = (e: React.FormEvent) => { e.preventDefault(); if (currentTab?.url) loadUrlForTab(activeTab, currentTab.url); };
+  // ✅ SMART ADDRESS BAR
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!currentTab?.url) return;
+
+    const input = currentTab.url.trim();
+
+    if (
+      input.endsWith(".com") ||
+      input.endsWith(".org") ||
+      input.endsWith(".net") ||
+      input.endsWith(".io") ||
+      input.endsWith(".co") ||
+      input.endsWith(".gov")
+    ) {
+      const url = input.startsWith("http") ? input : `https://${input}`;
+      updateTab(activeTab, { url });
+      loadUrlForTab(activeTab, url);
+    } else {
+      const googleUrl = `https://www.google.com/search?q=${encodeURIComponent(input)}`;
+      updateTab(activeTab, { url: googleUrl });
+      loadUrlForTab(activeTab, googleUrl);
+    }
+  };
+
   const handleBack = () => { if (!currentTab) return; if (currentTab.historyIndex > 0) { const newIndex = currentTab.historyIndex - 1; const url = currentTab.history[newIndex]; updateTab(activeTab, { historyIndex: newIndex, url }); loadUrlForTab(activeTab, url); } };
   const handleForward = () => { if (!currentTab) return; if (currentTab.historyIndex < currentTab.history.length - 1) { const newIndex = currentTab.historyIndex + 1; const url = currentTab.history[newIndex]; updateTab(activeTab, { historyIndex: newIndex, url }); loadUrlForTab(activeTab, url); } };
   const handleRefresh = () => { if (currentTab?.currentUrl) loadUrlForTab(activeTab, currentTab.currentUrl); };
@@ -164,7 +188,7 @@ export const ProxyBrowser = () => {
           <form onSubmit={handleSubmit} className="flex-1 flex gap-2 items-center">
             <div className="flex-1 relative">
               <Shield className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-primary z-10" />
-              <Input type="text" value={currentTab?.url || ""} onChange={(e) => updateTab(activeTab, { url: e.target.value })} placeholder="Enter a website URL..." className="pl-10 bg-input border-border focus-visible:ring-primary" />
+              <Input type="text" value={currentTab?.url || ""} onChange={(e) => updateTab(activeTab, { url: e.target.value })} placeholder="Enter a website URL or search..." className="pl-10 bg-input border-border focus-visible:ring-primary" />
             </div>
 
             {/* Calculator */}
@@ -218,10 +242,6 @@ export const ProxyBrowser = () => {
               {/* Music */}
               <Button onClick={toggleMusic} variant="outline" className="gap-2">{isPlaying ? <><Pause className="h-4 w-4" />Pause Music</> : <><Play className="h-4 w-4" />Play Music</>}</Button>
 
-              {/* Google Search */}
-              <form onSubmit={(e) => { e.preventDefault(); const q = (e.currentTarget.elements.namedItem('search') as HTMLInputElement).value.trim(); if (q) { const url = `https://www.google.com/search?q=${encodeURIComponent(q)}`; updateTab(activeTab, { url }); loadUrlForTab(activeTab, url); (e.currentTarget.elements.namedItem('search') as HTMLInputElement).value = ''; }}} className="w-full">
-                <Input type="text" name="search" placeholder="Search Google..." className="w-full bg-input border-border focus-visible:ring-primary" />
-              </form>
             </div>
             <iframe ref={audioRef} allow="autoplay" className="hidden" title="Background Music" />
           </div>
