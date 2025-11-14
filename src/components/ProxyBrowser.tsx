@@ -1,8 +1,8 @@
 import { useState, useRef, useEffect } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { ArrowLeft, ArrowRight, RotateCw, Home, Shield, AlertCircle, Loader2, Plus, X, Play, Pause, Volume2, Calculator } from "lucide-react";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ArrowLeft, ArrowRight, RotateCw, Home, Shield, AlertCircle, Loader2, Plus, X, Play, Pause, Calculator, Maximize, Minimize } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { supabase } from "@/integrations/supabase/client";
@@ -39,6 +39,7 @@ export const ProxyBrowser = () => {
   const [activeTab, setActiveTab] = useState<string>("tab-1");
   const [isPlaying, setIsPlaying] = useState<boolean>(false);
   const [showMathSolver, setShowMathSolver] = useState<boolean>(false);
+  const [isFullScreen, setIsFullScreen] = useState<boolean>(false);
   const audioRef = useRef<HTMLIFrameElement>(null);
   const { toast } = useToast();
 
@@ -64,11 +65,9 @@ export const ProxyBrowser = () => {
     
     try {
       new URL(formattedUrl);
-
       const { data, error: proxyError } = await supabase.functions.invoke('proxy', {
         body: { url: formattedUrl }
       });
-
       if (proxyError) throw new Error(proxyError.message);
 
       setTabs(prevTabs => {
@@ -187,48 +186,62 @@ export const ProxyBrowser = () => {
     }
   };
 
+  const toggleFullScreen = () => setIsFullScreen(!isFullScreen);
+
   return (
     <div className="flex flex-col h-screen bg-background">
 
       {/* Tabs Bar */}
-      <div className="glass-morphism border-b">
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="h-9 flex items-center gap-1 bg-transparent p-0">
-            {tabs.map((tab) => (
-              <TabsTrigger 
-                key={tab.id} 
-                value={tab.id}
-                className="relative max-w-[200px] px-4 py-2 data-[state=active]:bg-background/50 rounded-t-lg"
-              >
-                <span className="truncate text-sm">{tab.title}</span>
-                {tabs.length > 1 && (
-                  <button
-                    onClick={(e) => closeTab(tab.id, e)}
-                    className="ml-2 hover:bg-muted rounded-sm p-0.5"
+      {!isFullScreen && (
+        <div className="glass-morphism border-b">
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+            <div className="flex items-center justify-between px-2">
+              <TabsList className="h-9 flex items-center gap-1 bg-transparent p-0">
+                {tabs.map((tab) => (
+                  <TabsTrigger 
+                    key={tab.id} 
+                    value={tab.id}
+                    className="relative max-w-[200px] px-4 py-2 data-[state=active]:bg-background/50 rounded-t-lg"
                   >
-                    <X className="h-3 w-3" />
-                  </button>
-                )}
-              </TabsTrigger>
-            ))}
+                    <span className="truncate text-sm">{tab.title}</span>
+                    {tabs.length > 1 && (
+                      <button
+                        onClick={(e) => closeTab(tab.id, e)}
+                        className="ml-2 hover:bg-muted rounded-sm p-0.5"
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    )}
+                  </TabsTrigger>
+                ))}
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={addNewTab}
+                  className="h-9 w-9"
+                >
+                  <Plus className="h-4 w-4" />
+                </Button>
+              </TabsList>
 
-            {/* + Button right next to tabs */}
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={addNewTab}
-              className="h-9 w-9"
-            >
-              <Plus className="h-4 w-4" />
-            </Button>
-          </TabsList>
-        </Tabs>
-      </div>
+              {/* Fullscreen Toggle */}
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={toggleFullScreen}
+                className="h-9 w-9"
+                title={isFullScreen ? "Exit Fullscreen" : "Fullscreen"}
+              >
+                {isFullScreen ? <Minimize className="h-4 w-4" /> : <Maximize className="h-4 w-4" />}
+              </Button>
+            </div>
+          </Tabs>
+        </div>
+      )}
 
       {/* Browser Chrome */}
       <div className="glass-morphism border-b">
         <div className="flex items-center gap-2 p-3">
-          {/* Navigation Buttons */}
           <div className="flex gap-1">
             <Button
               variant="ghost"
@@ -334,16 +347,10 @@ export const ProxyBrowser = () => {
               <h1 className="text-4xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
                 Navis Web
               </h1>
-              <p className="text-muted-foreground text-lg">
-                Bypass these dictators
-              </p>
+              <p className="text-muted-foreground text-lg">Bypass these dictators</p>
               
               {/* Music Control */}
-              <Button
-                onClick={toggleMusic}
-                variant="outline"
-                className="gap-2"
-              >
+              <Button onClick={toggleMusic} variant="outline" className="gap-2">
                 {isPlaying ? (
                   <>
                     <Pause className="h-4 w-4" />
@@ -356,7 +363,7 @@ export const ProxyBrowser = () => {
                   </>
                 )}
               </Button>
-              
+
               {/* Google Search */}
               <form 
                 onSubmit={(e) => {
@@ -372,45 +379,11 @@ export const ProxyBrowser = () => {
                 }}
                 className="w-full"
               >
-                <Input
-                  type="text"
-                  name="search"
-                  placeholder="Search Google..."
-                  className="w-full bg-input border-border focus-visible:ring-primary"
-                />
+                <Input type="text" name="search" placeholder="Search Google..." className="w-full bg-input border-border focus-visible:ring-primary" />
               </form>
-
-              <div className="flex flex-wrap gap-2 justify-center pt-4">
-                <Button
-                  variant="secondary"
-                  onClick={() => {
-                    updateTab(activeTab, { url: "crazygames.com" });
-                    loadUrlForTab(activeTab, "crazygames.com");
-                  }}
-                  className="transition-smooth"
-                >
-                  Try CrazyGames
-                </Button>
-                <Button
-                  variant="secondary"
-                  onClick={() => {
-                    updateTab(activeTab, { url: "example.com" });
-                    loadUrlForTab(activeTab, "example.com");
-                  }}
-                  className="transition-smooth"
-                >
-                  Try Example
-                </Button>
-              </div>
             </div>
-            
-            {/* Hidden YouTube Audio Player */}
-            <iframe
-              ref={audioRef}
-              allow="autoplay"
-              className="hidden"
-              title="Background Music"
-            />
+
+            <iframe ref={audioRef} allow="autoplay" className="hidden" title="Background Music" />
           </div>
         ) : (
           <iframe
