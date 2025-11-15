@@ -1,10 +1,9 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
-  ArrowLeft, ArrowRight, RotateCw, Home, Shield, Loader2, 
-  Plus, X, Play, Pause, Calculator, Maximize, Minimize, Star 
+  Shield, Loader2, Plus, X, Play, Pause, Calculator, Maximize, Minimize, Star 
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { MathSolver } from "./MathSolver";
@@ -25,7 +24,7 @@ const vpnRegions = [
   { code: "canada", label: "Canada", flag: "🇨🇦" },
 ];
 
-// Free CORS proxy to bypass restrictions
+// Free CORS proxy
 const PROXY = "https://corsproxy.io/?";
 
 export const ProxyBrowser = () => {
@@ -45,6 +44,7 @@ export const ProxyBrowser = () => {
   const [isFullScreen, setIsFullScreen] = useState<boolean>(false);
   const [vpnEnabled, setVpnEnabled] = useState<boolean>(false);
   const [vpnRegion, setVpnRegion] = useState<string>("usa");
+  const [suggestions, setSuggestions] = useState<string[]>([]);
   const audioRef = useRef<HTMLIFrameElement>(null);
   const { toast } = useToast();
 
@@ -54,13 +54,32 @@ export const ProxyBrowser = () => {
     setTabs(tabs.map(t => t.id === id ? { ...t, ...updates } : t));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!currentTab?.url) return;
+  // Google search suggestions
+  useEffect(() => {
+    if (!currentTab?.url) {
+      setSuggestions([]);
+      return;
+    }
 
-    const input = currentTab.url.trim();
+    const controller = new AbortController();
+    const fetchSuggestions = async () => {
+      try {
+        const res = await fetch(`https://suggestqueries.google.com/complete/search?client=firefox&q=${encodeURIComponent(currentTab.url)}`, { signal: controller.signal });
+        const data = await res.json();
+        setSuggestions(data[1].slice(0, 5));
+      } catch {}
+    };
+    fetchSuggestions();
+
+    return () => controller.abort();
+  }, [currentTab?.url]);
+
+  const handleSubmit = (e: React.FormEvent | string) => {
+    e.preventDefault && e.preventDefault();
+    const input = typeof e === "string" ? e : currentTab?.url;
+    if (!input) return;
+
     let targetUrl: string;
-
     if (
       input.endsWith(".com") ||
       input.endsWith(".org") ||
@@ -74,10 +93,9 @@ export const ProxyBrowser = () => {
       targetUrl = `https://www.google.com/search?q=${encodeURIComponent(input)}`;
     }
 
-    // Add VPN (for demonstration, we just append a param)
     const proxyUrl = `${PROXY}${encodeURIComponent(targetUrl)}${vpnEnabled ? `&region=${vpnRegion}` : ""}`;
-
     updateTab(activeTab, { currentUrl: proxyUrl, isLoading: true });
+    setSuggestions([]);
     setTimeout(() => updateTab(activeTab, { isLoading: false }), 800);
   };
 
@@ -139,23 +157,40 @@ export const ProxyBrowser = () => {
       )}
 
       {/* Address Bar */}
-      <div className="glass-morphism border-b">
+      <div className="glass-morphism border-b relative">
         <div className="flex items-center gap-2 p-3">
           <form onSubmit={handleSubmit} className="flex-1 flex gap-2 items-center">
             <div className="flex-1 relative">
               <Shield className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-primary z-10" />
-              <Input type="text" value={currentTab?.url || ""} onChange={(e) => updateTab(activeTab, { url: e.target.value })} placeholder="Enter website or search..." className="pl-10 bg-input border-border focus-visible:ring-primary" />
+              <Input
+                type="text"
+                value={currentTab?.url || ""}
+                onChange={(e) => updateTab(activeTab, { url: e.target.value })}
+                placeholder="Enter website or search..."
+                className="pl-10 bg-input border-border focus-visible:ring-primary"
+              />
+              {/* Suggestions Dropdown */}
+              {suggestions.length > 0 && (
+                <ul className="absolute top-full left-0 w-full bg-card border border-border rounded mt-1 z-20">
+                  {suggestions.map(s => (
+                    <li
+                      key={s}
+                      onClick={() => handleSubmit(s)}
+                      className="px-3 py-2 cursor-pointer hover:bg-background/50"
+                    >
+                      {s}
+                    </li>
+                  ))}
+                </ul>
+              )}
             </div>
 
-            {/* Calculator */}
-            <Button type="button" variant="ghost" size="icon" onClick={() => setShowMathSolver(!showMathSolver)}><Calculator className="h-4 w-4" /></Button>
-
-            {/* Music */}
-            <Button type="button" variant="outline" onClick={toggleMusic}>{isPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}</Button>
+            <Button type="button" variant="ghost" size="icon" onClick={() => setShowMathSolver(!showMathSolver)}> <Calculator className="h-4 w-4" /> </Button>
+            <Button type="button" variant="outline" onClick={toggleMusic}> {isPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />} </Button>
 
             {/* VPN */}
             <div className="flex items-center gap-2">
-              <Button variant="outline" size="sm" onClick={() => setVpnEnabled(!vpnEnabled)} className={`flex items-center gap-1 px-2 py-1 rounded ${vpnEnabled ? "border-green-500" : "border-gray-400"}`} title={`Navi VPN ${vpnEnabled ? "ON" : "OFF"}`}>
+              <Button variant="outline" size="sm" onClick={() => setVpnEnabled(!vpnEnabled)} className={`flex items-center gap-1 px-2 py-1 rounded ${vpnEnabled ? "border-green-500" : "border-gray-400"}`}>
                 <Shield className={`h-4 w-4 ${vpnEnabled ? "text-green-500" : "text-gray-400"}`} />
                 {vpnEnabled && <span className="text-xs font-medium">{vpnRegions.find(r => r.code === vpnRegion)?.flag} {vpnRegion.toUpperCase()}</span>}
               </Button>
@@ -164,7 +199,6 @@ export const ProxyBrowser = () => {
               </select>
             </div>
 
-            {/* Bookmark */}
             <Button type="button" variant="ghost" size="icon" onClick={() => toggleBookmark(activeTab)}>
               <Star className={`h-4 w-4 ${currentTab?.bookmarked ? "text-yellow-400" : "text-gray-400"}`} />
             </Button>
