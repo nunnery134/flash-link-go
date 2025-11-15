@@ -17,9 +17,6 @@ import {
   Boombox,
   SkipBack,
   SkipForward,
-  Calculator,
-  Minimize,
-  Maximize,
   Star,
   MapPin,
   Power
@@ -52,13 +49,6 @@ const COUNTRIES = [
   { code: "australia", label: "Australia", flag: "🇦🇺" },
 ];
 
-// Playlist info (replace with real titles/artists if desired)
-const PLAYLIST = [
-  { videoId: "99H578iry8s", title: "Song 1", artist: "Artist 1" },
-  { videoId: "NEXT_VIDEO_ID", title: "Song 2", artist: "Artist 2" },
-  // add more songs here
-];
-
 export const ProxyBrowser = () => {
   const initialTab: TabState = {
     id: `tab-1`,
@@ -76,19 +66,15 @@ export const ProxyBrowser = () => {
 
   const [tabs, setTabs] = useState<TabState[]>([initialTab]);
   const [activeTab, setActiveTab] = useState<string>("tab-1");
+  const [isPlaying, setIsPlaying] = useState<boolean>(false);
+  const [showMusicPlayer, setShowMusicPlayer] = useState<boolean>(false);
   const [showMathSolver, setShowMathSolver] = useState<boolean>(false);
   const [isFullScreen, setIsFullScreen] = useState<boolean>(false);
   const [vpnEnabled, setVpnEnabled] = useState<boolean>(false);
   const [vpnRegion, setVpnRegion] = useState<string>("usa");
   const [showVpnModal, setShowVpnModal] = useState<boolean>(false);
 
-  // Music player state
-  const [showMusicPlayer, setShowMusicPlayer] = useState<boolean>(false);
-  const [isPlaying, setIsPlaying] = useState<boolean>(false);
-  const [currentSongIndex, setCurrentSongIndex] = useState<number>(0);
-  const [progress, setProgress] = useState<number>(0); // 0-100
-  const playerRef = useRef<any>(null);
-
+  const audioRef = useRef<HTMLIFrameElement>(null);
   const { toast } = useToast();
   const currentTab = tabs.find((t) => t.id === activeTab);
 
@@ -143,55 +129,14 @@ export const ProxyBrowser = () => {
     if (currentTab?.url) loadUrlForTab(activeTab, currentTab.url);
   };
 
-  const toggleMusicPlayer = () => {
+  const toggleMusic = () => {
     setShowMusicPlayer((prev) => !prev);
-    if (!isPlaying) setIsPlaying(true);
-  };
-
-  const skipNext = () => setCurrentSongIndex((i) => (i + 1) % PLAYLIST.length);
-  const skipPrev = () => setCurrentSongIndex((i) => (i - 1 + PLAYLIST.length) % PLAYLIST.length);
-
-  // YouTube IFrame API
-  useEffect(() => {
-    const tag = document.createElement("script");
-    tag.src = "https://www.youtube.com/iframe_api";
-    document.body.appendChild(tag);
-
-    (window as any).onYouTubeIframeAPIReady = () => {
-      playerRef.current = new (window as any).YT.Player("youtube-player", {
-        height: "0",
-        width: "0",
-        videoId: PLAYLIST[currentSongIndex].videoId,
-        playerVars: { autoplay: 1, loop: 1, playlist: PLAYLIST.map(s => s.videoId).join(",") },
-        events: {
-          onReady: (event: any) => {
-            if (isPlaying) event.target.playVideo();
-          },
-          onStateChange: (event: any) => {
-            if (event.data === (window as any).YT.PlayerState.ENDED) skipNext();
-          }
-        }
-      });
-    };
-  }, []);
-
-  useEffect(() => {
-    if (playerRef.current) {
-      playerRef.current.loadVideoById(PLAYLIST[currentSongIndex].videoId);
-      if (isPlaying) playerRef.current.playVideo();
+    if (!isPlaying && audioRef.current) {
+      audioRef.current.src =
+        "https://www.youtube.com/embed/99H578iry8s?autoplay=1&loop=1&playlist=99H578iry8s";
+      setIsPlaying(true);
     }
-  }, [currentSongIndex]);
-
-  useEffect(() => {
-    const interval = setInterval(() => {
-      if (playerRef.current && isPlaying) {
-        const duration = playerRef.current.getDuration();
-        const currentTime = playerRef.current.getCurrentTime();
-        if (duration) setProgress((currentTime / duration) * 100);
-      }
-    }, 500);
-    return () => clearInterval(interval);
-  }, [isPlaying]);
+  };
 
   const currentCountry = COUNTRIES.find((c) => c.code === vpnRegion);
 
@@ -235,26 +180,24 @@ export const ProxyBrowser = () => {
           <Button type="button" onClick={() => setShowMathSolver(!showMathSolver)}><Calculator /></Button>
 
           {/* Boombox Music Toggle */}
-          <Button type="button" onClick={toggleMusicPlayer}><Boombox /></Button>
+          <Button type="button" onClick={toggleMusic}><Boombox /></Button>
         </form>
       </div>
 
-      {/* Music Player */}
+      {/* Music Player Tab */}
       {showMusicPlayer && (
         <div className="absolute bottom-4 left-4 bg-card p-4 rounded-lg shadow-lg w-80 flex flex-col gap-2">
           <h3 className="font-bold">Navis Radio</h3>
-          <p className="text-sm font-medium">{PLAYLIST[currentSongIndex].title} - {PLAYLIST[currentSongIndex].artist}</p>
           <div className="flex items-center justify-between">
-            <Button onClick={skipPrev}><SkipBack /></Button>
-            <Button onClick={() => { isPlaying ? playerRef.current.pauseVideo() : playerRef.current.playVideo(); setIsPlaying(!isPlaying); }}>
-              {isPlaying ? <Pause /> : <Play />}
-            </Button>
-            <Button onClick={skipNext}><SkipForward /></Button>
+            <Button onClick={() => {}}> <SkipBack /> </Button>
+            <Button onClick={() => setIsPlaying(!isPlaying)}> {isPlaying ? <Pause /> : <Play />} </Button>
+            <Button onClick={() => {}}> <SkipForward /> </Button>
           </div>
           <div className="w-full h-1 bg-gray-700 rounded-full overflow-hidden mt-2">
-            <div className="bg-purple-500 h-1" style={{ width: `${progress}%` }} />
+            <div className="bg-purple-500 h-1 w-1/2"></div> {/* simple progress bar */}
           </div>
-          <div id="youtube-player" />
+          <p className="text-sm">Now Playing: Track from Playlist</p>
+          <iframe ref={audioRef} allow="autoplay" className="hidden" />
         </div>
       )}
 
