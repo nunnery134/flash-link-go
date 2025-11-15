@@ -25,6 +25,9 @@ const vpnRegions = [
   { code: "canada", label: "Canada", flag: "🇨🇦" },
 ];
 
+// Free CORS proxy to bypass restrictions
+const PROXY = "https://corsproxy.io/?";
+
 export const ProxyBrowser = () => {
   const initialTab: TabState = {
     id: "tab-1",
@@ -56,7 +59,7 @@ export const ProxyBrowser = () => {
     if (!currentTab?.url) return;
 
     const input = currentTab.url.trim();
-    let url: string;
+    let targetUrl: string;
 
     if (
       input.endsWith(".com") ||
@@ -66,20 +69,16 @@ export const ProxyBrowser = () => {
       input.endsWith(".co") ||
       input.endsWith(".gov")
     ) {
-      // Direct website
-      url = input.startsWith("http") ? input : `https://${input}`;
+      targetUrl = input.startsWith("http") ? input : `https://${input}`;
     } else {
-      // Google search
-      url = `https://www.google.com/search?q=${encodeURIComponent(input)}`;
+      targetUrl = `https://www.google.com/search?q=${encodeURIComponent(input)}`;
     }
 
-    // Add VPN parameter if enabled (optional, can be handled in future)
-    if (vpnEnabled) {
-      url += `&region=${vpnRegion}`;
-    }
+    // Add VPN (for demonstration, we just append a param)
+    const proxyUrl = `${PROXY}${encodeURIComponent(targetUrl)}${vpnEnabled ? `&region=${vpnRegion}` : ""}`;
 
-    updateTab(activeTab, { currentUrl: url, isLoading: true });
-    setTimeout(() => updateTab(activeTab, { isLoading: false }), 500);
+    updateTab(activeTab, { currentUrl: proxyUrl, isLoading: true });
+    setTimeout(() => updateTab(activeTab, { isLoading: false }), 800);
   };
 
   const addNewTab = () => {
@@ -117,7 +116,7 @@ export const ProxyBrowser = () => {
   return (
     <div className="flex flex-col h-screen bg-background">
 
-      {/* Tabs Bar */}
+      {/* Tabs */}
       {!isFullScreen && (
         <div className="glass-morphism border-b">
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
