@@ -48,22 +48,21 @@ export const ProxyBrowser = () => {
     setTabs(tabs.map(t => t.id === id ? { ...t, ...updates } : t));
   };
 
+  // Navigate input: .com/.org/.net treated as URL, otherwise search Google
   const navigateInput = (input: string) => {
     if (!input) return;
-
     let url = input;
-    // If it ends with .com, treat as URL
     if (input.endsWith(".com") || input.endsWith(".org") || input.endsWith(".net")) {
       if (!input.startsWith("http://") && !input.startsWith("https://")) url = `https://${input}`;
     } else {
-      // Treat as search
       url = `https://www.google.com/search?q=${encodeURIComponent(input)}`;
     }
 
+    const newHistory = [...(currentTab?.history || []), url];
     updateTab(activeTab, {
       url,
-      history: [...(currentTab?.history || []), url],
-      historyIndex: (currentTab?.historyIndex || -1) + 1,
+      history: newHistory,
+      historyIndex: newHistory.length - 1,
       title: url.includes("google.com/search") ? "Google Search" : url
     });
   };
@@ -89,6 +88,33 @@ export const ProxyBrowser = () => {
     if (activeTab === tabId) setActiveTab(newTabs[0].id);
   };
 
+  const handleBack = () => {
+    if (!currentTab || currentTab.historyIndex <= 0) return;
+    const newIndex = currentTab.historyIndex - 1;
+    updateTab(activeTab, {
+      url: currentTab.history[newIndex],
+      historyIndex: newIndex
+    });
+  };
+
+  const handleForward = () => {
+    if (!currentTab || currentTab.historyIndex >= currentTab.history.length - 1) return;
+    const newIndex = currentTab.historyIndex + 1;
+    updateTab(activeTab, {
+      url: currentTab.history[newIndex],
+      historyIndex: newIndex
+    });
+  };
+
+  const handleRefresh = () => {
+    if (!currentTab?.url) return;
+    updateTab(activeTab, { url: currentTab.url });
+  };
+
+  const handleHome = () => {
+    updateTab(activeTab, { url: "", title: "Navis Web" });
+  };
+
   const toggleMusic = () => {
     if (!audioRef.current) return;
     if (isPlaying) {
@@ -107,7 +133,7 @@ export const ProxyBrowser = () => {
   return (
     <div className="flex flex-col h-screen bg-background">
 
-      {/* Tabs */}
+      {/* Tabs Bar */}
       {!isFullScreen && (
         <div className="glass-morphism border-b">
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
@@ -131,6 +157,13 @@ export const ProxyBrowser = () => {
 
       {/* Browser Bar */}
       <div className="glass-morphism border-b p-3 flex items-center gap-2">
+        <div className="flex gap-1">
+          <Button variant="ghost" size="icon" onClick={handleBack}><ArrowLeft className="h-4 w-4" /></Button>
+          <Button variant="ghost" size="icon" onClick={handleForward}><ArrowRight className="h-4 w-4" /></Button>
+          <Button variant="ghost" size="icon" onClick={handleRefresh}><RotateCw className="h-4 w-4" /></Button>
+          <Button variant="ghost" size="icon" onClick={handleHome}><Home className="h-4 w-4" /></Button>
+        </div>
+
         <form onSubmit={handleSubmit} className="flex-1 flex gap-2 items-center">
           <div className="flex-1 relative">
             <Shield className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-primary z-10" />
@@ -154,7 +187,7 @@ export const ProxyBrowser = () => {
         </form>
       </div>
 
-      {/* Main content */}
+      {/* Content */}
       <div className="flex-1 relative bg-card">
         {!currentTab?.url && (
           <div className="flex flex-col items-center justify-center h-full text-center space-y-4">
