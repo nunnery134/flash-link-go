@@ -2,18 +2,17 @@ import { useState, useRef } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import {
-  ArrowLeft, ArrowRight, RotateCw, Home, Shield, Plus, X, Play, Pause, Calculator, Maximize, Minimize, Star
+import { 
+  ArrowLeft, ArrowRight, RotateCw, Home, Shield, Plus, X, Play, Pause, Calculator, Maximize, Minimize, Star 
 } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 import { MathSolver } from "./MathSolver";
 
 interface TabState {
   id: string;
-  url: string;
   title: string;
-  bookmarked: boolean;
-  history: string[];
-  historyIndex: number;
+  url: string;
+  bookmarked?: boolean;
 }
 
 const vpnRegions = [
@@ -24,58 +23,22 @@ const vpnRegions = [
 ];
 
 export const ProxyBrowser = () => {
-  const initialTab: TabState = {
-    id: "tab-1",
-    url: "",
-    title: "Navis Web",
-    bookmarked: false,
-    history: [],
-    historyIndex: -1
-  };
-
+  const initialTab: TabState = { id: "tab-1", title: "Navis Web", url: "" };
   const [tabs, setTabs] = useState<TabState[]>([initialTab]);
   const [activeTab, setActiveTab] = useState("tab-1");
-  const [isPlaying, setIsPlaying] = useState(false);
   const [showMathSolver, setShowMathSolver] = useState(false);
+  const [isPlaying, setIsPlaying] = useState(false);
   const [isFullScreen, setIsFullScreen] = useState(false);
   const [vpnEnabled, setVpnEnabled] = useState(false);
   const [vpnRegion, setVpnRegion] = useState("usa");
+  const [inputValue, setInputValue] = useState("");
   const audioRef = useRef<HTMLIFrameElement>(null);
+  const { toast } = useToast();
 
   const currentTab = tabs.find(t => t.id === activeTab);
 
-  const updateTab = (id: string, updates: Partial<TabState>) => {
-    setTabs(tabs.map(t => t.id === id ? { ...t, ...updates } : t));
-  };
-
-  // Navigate input: .com/.org/.net treated as URL, otherwise search Google
-  const navigateInput = (input: string) => {
-    if (!input) return;
-    let url = input;
-    if (input.endsWith(".com") || input.endsWith(".org") || input.endsWith(".net")) {
-      if (!input.startsWith("http://") && !input.startsWith("https://")) url = `https://${input}`;
-    } else {
-      url = `https://www.google.com/search?q=${encodeURIComponent(input)}`;
-    }
-
-    const newHistory = [...(currentTab?.history || []), url];
-    updateTab(activeTab, {
-      url,
-      history: newHistory,
-      historyIndex: newHistory.length - 1,
-      title: url.includes("google.com/search") ? "Google Search" : url
-    });
-  };
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    const val = (e.currentTarget.elements.namedItem("search") as HTMLInputElement).value.trim();
-    navigateInput(val);
-    (e.currentTarget.elements.namedItem("search") as HTMLInputElement).value = "";
-  };
-
   const addNewTab = () => {
-    const newTab: TabState = { ...initialTab, id: `tab-${Date.now()}` };
+    const newTab: TabState = { id: `tab-${Date.now()}`, title: "New Tab", url: "" };
     setTabs([...tabs, newTab]);
     setActiveTab(newTab.id);
   };
@@ -88,33 +51,6 @@ export const ProxyBrowser = () => {
     if (activeTab === tabId) setActiveTab(newTabs[0].id);
   };
 
-  const handleBack = () => {
-    if (!currentTab || currentTab.historyIndex <= 0) return;
-    const newIndex = currentTab.historyIndex - 1;
-    updateTab(activeTab, {
-      url: currentTab.history[newIndex],
-      historyIndex: newIndex
-    });
-  };
-
-  const handleForward = () => {
-    if (!currentTab || currentTab.historyIndex >= currentTab.history.length - 1) return;
-    const newIndex = currentTab.historyIndex + 1;
-    updateTab(activeTab, {
-      url: currentTab.history[newIndex],
-      historyIndex: newIndex
-    });
-  };
-
-  const handleRefresh = () => {
-    if (!currentTab?.url) return;
-    updateTab(activeTab, { url: currentTab.url });
-  };
-
-  const handleHome = () => {
-    updateTab(activeTab, { url: "", title: "Navis Web" });
-  };
-
   const toggleMusic = () => {
     if (!audioRef.current) return;
     if (isPlaying) {
@@ -124,6 +60,23 @@ export const ProxyBrowser = () => {
       audioRef.current.src = "https://www.youtube.com/embed/99H578iry8s?autoplay=1&loop=1&playlist=99H578iry8s";
       setIsPlaying(true);
     }
+  };
+
+  const handleGo = () => {
+    const trimmed = inputValue.trim();
+    if (!trimmed) return;
+
+    // If user enters .com/.org/.net link, open directly
+    if (/\.(com|org|net)(\/.*)?$/.test(trimmed)) {
+      const url = trimmed.startsWith("http") ? trimmed : `https://${trimmed}`;
+      window.open(url, "_blank");
+    } else {
+      // Otherwise, search Google
+      const searchUrl = `https://www.google.com/search?q=${encodeURIComponent(trimmed)}`;
+      window.open(searchUrl, "_blank");
+    }
+
+    setInputValue("");
   };
 
   const toggleBookmark = (tabId: string) => {
@@ -147,6 +100,7 @@ export const ProxyBrowser = () => {
                 ))}
                 <Button variant="ghost" size="icon" onClick={addNewTab} className="h-9 w-9"><Plus className="h-4 w-4" /></Button>
               </TabsList>
+
               <Button variant="ghost" size="icon" onClick={() => setIsFullScreen(!isFullScreen)} className="h-9 w-9">
                 {isFullScreen ? <Minimize className="h-4 w-4" /> : <Maximize className="h-4 w-4" />}
               </Button>
@@ -155,54 +109,52 @@ export const ProxyBrowser = () => {
         </div>
       )}
 
-      {/* Browser Bar */}
+      {/* Address Bar */}
       <div className="glass-morphism border-b p-3 flex items-center gap-2">
-        <div className="flex gap-1">
-          <Button variant="ghost" size="icon" onClick={handleBack}><ArrowLeft className="h-4 w-4" /></Button>
-          <Button variant="ghost" size="icon" onClick={handleForward}><ArrowRight className="h-4 w-4" /></Button>
-          <Button variant="ghost" size="icon" onClick={handleRefresh}><RotateCw className="h-4 w-4" /></Button>
-          <Button variant="ghost" size="icon" onClick={handleHome}><Home className="h-4 w-4" /></Button>
+        <div className="flex-1 relative">
+          <Shield className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-primary z-10" />
+          <Input
+            type="text"
+            value={inputValue}
+            onChange={e => setInputValue(e.target.value)}
+            placeholder="Enter URL or search..."
+            className="pl-10 bg-input border-border focus-visible:ring-primary"
+            onKeyDown={e => e.key === "Enter" && handleGo()}
+          />
         </div>
 
-        <form onSubmit={handleSubmit} className="flex-1 flex gap-2 items-center">
-          <div className="flex-1 relative">
-            <Shield className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-primary z-10" />
-            <Input name="search" placeholder="Enter website or search..." className="pl-10 bg-input border-border focus-visible:ring-primary" />
-          </div>
-          <Button type="submit" className="bg-primary text-primary-foreground">Go</Button>
+        <Button type="button" variant="ghost" size="icon" onClick={() => setShowMathSolver(!showMathSolver)}><Calculator className="h-4 w-4" /></Button>
 
-          <Button type="button" variant="ghost" size="icon" onClick={() => setShowMathSolver(!showMathSolver)}><Calculator className="h-4 w-4" /></Button>
-
+        {/* VPN */}
+        <div className="flex items-center gap-2">
           <Button variant="outline" size="sm" onClick={() => setVpnEnabled(!vpnEnabled)} className={`flex items-center gap-1 px-2 py-1 rounded ${vpnEnabled ? "border-green-500" : "border-gray-400"}`}>
             <Shield className={`h-4 w-4 ${vpnEnabled ? "text-green-500" : "text-gray-400"}`} />
             {vpnEnabled && <span className="text-xs font-medium">{vpnRegions.find(r => r.code === vpnRegion)?.flag} {vpnRegion.toUpperCase()}</span>}
           </Button>
-          <select value={vpnRegion} onChange={(e) => setVpnRegion(e.target.value)} disabled={!vpnEnabled} className="bg-input border-border px-2 py-1 rounded">
+          <select value={vpnRegion} onChange={e => setVpnRegion(e.target.value)} className="bg-input border-border px-2 py-1 rounded" disabled={!vpnEnabled}>
             {vpnRegions.map(r => <option key={r.code} value={r.code}>{r.flag} {r.label}</option>)}
           </select>
+        </div>
 
-          <Button type="button" variant="ghost" size="icon" onClick={() => toggleBookmark(activeTab)}>
-            <Star className={`h-4 w-4 ${currentTab?.bookmarked ? "text-yellow-400" : "text-gray-400"}`} />
-          </Button>
-        </form>
+        {/* Bookmark */}
+        <Button type="button" variant="ghost" size="icon" onClick={() => toggleBookmark(activeTab)}>
+          <Star className={`h-4 w-4 ${currentTab?.bookmarked ? "text-yellow-400" : "text-gray-400"}`} />
+        </Button>
+
+        <Button type="button" className="bg-primary text-primary-foreground hover:bg-primary/90 min-w-[80px]" onClick={handleGo}>Go</Button>
       </div>
 
-      {/* Content */}
-      <div className="flex-1 relative bg-card">
-        {!currentTab?.url && (
-          <div className="flex flex-col items-center justify-center h-full text-center space-y-4">
-            <Shield className="h-20 w-20 text-primary mx-auto glow-effect" />
-            <h1 className="text-4xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">Navis Web</h1>
-            <p className="text-muted-foreground text-lg">Bypass these dictators</p>
-            <Button onClick={toggleMusic} variant="outline">{isPlaying ? <><Pause className="h-4 w-4"/> Pause</> : <><Play className="h-4 w-4"/> Play</>}</Button>
-          </div>
-        )}
-        {currentTab?.url && (
-          <iframe src={currentTab.url} className="w-full h-full border-0" title={currentTab.title} />
-        )}
-        <iframe ref={audioRef} allow="autoplay" className="hidden" title="Background Music" />
-      </div>
+      {/* Navis Web Home */}
+      {inputValue === "" && (
+        <div className="flex-1 flex flex-col items-center justify-center">
+          <h1 className="text-4xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">Navis Web</h1>
+          <p className="text-muted-foreground text-lg">Your browser with VPN, bookmarks, and music</p>
+          <Button onClick={toggleMusic} variant="outline" className="gap-2">{isPlaying ? <><Pause className="h-4 w-4"/>Pause Music</> : <><Play className="h-4 w-4"/>Play Music</>}</Button>
+          <iframe ref={audioRef} allow="autoplay" className="hidden" title="Background Music" />
+        </div>
+      )}
 
+      {/* Math Solver */}
       {showMathSolver && <MathSolver onClose={() => setShowMathSolver(false)} />}
     </div>
   );
