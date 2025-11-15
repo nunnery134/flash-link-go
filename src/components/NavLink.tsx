@@ -40,7 +40,6 @@ export const ProxyBrowser = () => {
   const [isFullScreen, setIsFullScreen] = useState(false);
   const [vpnEnabled, setVpnEnabled] = useState(false);
   const [vpnRegion, setVpnRegion] = useState("usa");
-
   const audioRef = useRef<HTMLIFrameElement>(null);
 
   const currentTab = tabs.find(t => t.id === activeTab);
@@ -51,15 +50,21 @@ export const ProxyBrowser = () => {
 
   const navigateInput = (input: string) => {
     if (!input) return;
+
     let url = input;
-    if (!input.startsWith("http")) {
-      url = input.endsWith(".com") ? `https://${input}` : `https://www.google.com/search?q=${encodeURIComponent(input)}`;
+    // If it ends with .com, treat as URL
+    if (input.endsWith(".com") || input.endsWith(".org") || input.endsWith(".net")) {
+      if (!input.startsWith("http://") && !input.startsWith("https://")) url = `https://${input}`;
+    } else {
+      // Treat as search
+      url = `https://www.google.com/search?q=${encodeURIComponent(input)}`;
     }
+
     updateTab(activeTab, {
       url,
       history: [...(currentTab?.history || []), url],
       historyIndex: (currentTab?.historyIndex || -1) + 1,
-      title: url.endsWith(".com") ? new URL(url).hostname : "Google Search"
+      title: url.includes("google.com/search") ? "Google Search" : url
     });
   };
 
@@ -67,6 +72,7 @@ export const ProxyBrowser = () => {
     e.preventDefault();
     const val = (e.currentTarget.elements.namedItem("search") as HTMLInputElement).value.trim();
     navigateInput(val);
+    (e.currentTarget.elements.namedItem("search") as HTMLInputElement).value = "";
   };
 
   const addNewTab = () => {
