@@ -278,6 +278,11 @@ export const ProxyBrowser = () => {
   }, []);
 
   const loadUrlForTab = useCallback(async (tabId: string, targetUrl: string) => {
+    // Don't try to load empty URLs
+    if (!targetUrl || !targetUrl.trim()) {
+      return;
+    }
+
     const formattedUrl = validateAndFormatUrl(targetUrl);
     updateTab(tabId, { isLoading: true, error: null });
 
@@ -333,10 +338,7 @@ export const ProxyBrowser = () => {
     }
   }, [updateTab, validateAndFormatUrl, toast]);
 
-  useEffect(() => {
-    // Initial load for the first tab
-    loadUrlForTab("tab-1", initialTab.url);
-  }, [loadUrlForTab, initialTab.url]);
+  // Removed initial useEffect that was trying to load empty URL
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -382,20 +384,19 @@ export const ProxyBrowser = () => {
   const handleHome = () => {
     if (!currentTab) return;
     updateTab(activeTab, {
-      url: initialTab.url, // Go to initial configured homepage
+      url: "",
       currentUrl: "",
       displayUrl: "",
       proxyContent: "",
       error: null,
       title: "New Tab",
     });
-    loadUrlForTab(activeTab, initialTab.url); // Perform actual navigation
   };
 
   const addNewTab = () => {
     const newTab: TabState = {
       id: `tab-${Date.now()}`,
-      url: initialTab.url, // New tabs start with the initial homepage
+      url: "",
       currentUrl: "",
       displayUrl: "",
       isLoading: false,
@@ -407,7 +408,6 @@ export const ProxyBrowser = () => {
     };
     setTabs([...tabs, newTab]);
     setActiveTab(newTab.id);
-    loadUrlForTab(newTab.id, initialTab.url); // Load content for the new tab
   };
 
   const closeTab = (tabId: string, e: React.MouseEvent) => {
