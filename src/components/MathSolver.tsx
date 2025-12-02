@@ -49,7 +49,8 @@ export const MathSolver = ({ onClose }: MathSolverProps) => {
       const stream = await navigator.mediaDevices.getDisplayMedia({ video: true });
       const track = stream.getVideoTracks()[0];
       const imageCapture = new ImageCapture(track);
-      const bitmap = await imageCapture.grabFrame();
+      const blob = await imageCapture.takePhoto();
+      const bitmap = await createImageBitmap(blob);
 
       // Draw to canvas and crop selection
       const canvas = document.createElement("canvas");
